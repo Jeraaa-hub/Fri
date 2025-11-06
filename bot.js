@@ -297,6 +297,50 @@ const newsletterThemes2025 = [
   ]}
 ];
 
+// US Holidays and Celebrations throughout the year
+const usHolidays = [
+  { date: '01-01', name: 'New Year\'s Day', emoji: '🎉', tip: 'New Year, New Home content - fresh starts and resolutions!' },
+  { date: '01-15', name: 'Martin Luther King Jr. Day', emoji: '✊', tip: 'Community and homeownership - share resources for equal housing opportunities' },
+  { date: '01-20', name: 'National Cheese Lover\'s Day', emoji: '🧀', tip: 'Fun post: "Say cheese! Check out these picture-perfect homes"' },
+  { date: '02-02', name: 'Groundhog Day', emoji: '🦫', tip: 'Will spring market come early? Fun prediction post about housing trends' },
+  { date: '02-14', name: 'Valentine\'s Day', emoji: '💕', tip: 'Fall in love with your dream home - romantic properties or love where you live content' },
+  { date: '02-17', name: 'Random Acts of Kindness Day', emoji: '💝', tip: 'Share how you help clients or spotlight local community initiatives' },
+  { date: '02-28', name: 'National Pancake Day', emoji: '🥞', tip: 'Breakfast nook features or kitchens perfect for Sunday brunch' },
+  { date: '03-08', name: 'International Women\'s Day', emoji: '👩', tip: 'Celebrate women in real estate and women homeowners' },
+  { date: '03-17', name: 'St. Patrick\'s Day', emoji: '🍀', tip: 'Lucky to find your dream home - share recent successes' },
+  { date: '03-20', name: 'First Day of Spring', emoji: '🌸', tip: 'Spring market is here! Perfect time for listings and open houses' },
+  { date: '04-01', name: 'April Fools\' Day', emoji: '🤡', tip: 'No joke - these homes are amazing! Fun, lighthearted content' },
+  { date: '04-07', name: 'World Health Day', emoji: '🏥', tip: 'Healthy homes content - wellness features and access to healthcare' },
+  { date: '04-22', name: 'Earth Day', emoji: '🌍', tip: 'Eco-friendly homes and sustainable living in NJ' },
+  { date: '05-04', name: 'Star Wars Day', emoji: '⭐', tip: 'May the force be with your home search! Fun, pop culture content' },
+  { date: '05-05', name: 'Cinco de Mayo', emoji: '🌮', tip: 'Homes with outdoor entertaining spaces perfect for celebrations' },
+  { date: '05-11', name: 'Mother\'s Day (2nd Sunday)', emoji: '💐', tip: 'Homes that moms will love - family features and spaces' },
+  { date: '05-26', name: 'Memorial Day', emoji: '🇺🇸', tip: 'Honor service members - VA loan info and military family resources' },
+  { date: '06-01', name: 'National Donut Day (1st Friday)', emoji: '🍩', tip: 'Sweet homes just like donuts! Fun morning post' },
+  { date: '06-05', name: 'World Environment Day', emoji: '🌱', tip: 'Green homes and energy efficiency features' },
+  { date: '06-15', name: 'Father\'s Day (3rd Sunday)', emoji: '👨', tip: 'Dad\'s dream spaces - garages, workshops, man caves' },
+  { date: '06-19', name: 'Juneteenth', emoji: '✊🏿', tip: 'Celebrate freedom and Black homeownership legacy' },
+  { date: '06-21', name: 'First Day of Summer', emoji: '☀️', tip: 'Hot summer market - pools, outdoor spaces, vacation vibes' },
+  { date: '07-04', name: 'Independence Day', emoji: '🎆', tip: 'Freedom of homeownership - declare your independence from renting' },
+  { date: '07-30', name: 'International Day of Friendship', emoji: '👥', tip: 'Thank your network and referral partners' },
+  { date: '08-26', name: 'National Dog Day', emoji: '🐕', tip: 'Pet-friendly homes and properties with yards for furry friends' },
+  { date: '09-01', name: 'Labor Day (1st Monday)', emoji: '⚒️', tip: 'Your hard work deserves a dream home - end of summer market shift' },
+  { date: '09-13', name: 'Grandparents Day', emoji: '👵👴', tip: 'Multi-generational homes and in-law suites' },
+  { date: '09-22', name: 'First Day of Fall', emoji: '🍂', tip: 'Fall in love with autumn homes - cozy features and fall colors' },
+  { date: '09-29', name: 'National Coffee Day', emoji: '☕', tip: 'Coffee bars and morning routine spaces in homes' },
+  { date: '10-03', name: 'National Boyfriend Day', emoji: '💑', tip: 'Couples buying their first home together content' },
+  { date: '10-13', name: 'Indigenous Peoples\' Day', emoji: '🪶', tip: 'Honor heritage and historic properties in NJ' },
+  { date: '10-31', name: 'Halloween', emoji: '🎃', tip: 'Spooktacular homes with character! Family-friendly neighborhoods' },
+  { date: '11-11', name: 'Veterans Day', emoji: '🎖️', tip: 'Thank you for your service - VA loan benefits and resources' },
+  { date: '11-27', name: 'Thanksgiving (4th Thursday)', emoji: '🦃', tip: 'Grateful for home - dining spaces perfect for hosting' },
+  { date: '11-28', name: 'Black Friday', emoji: '🛍️', tip: 'Better than Black Friday deals - your dream home awaits!' },
+  { date: '12-01', name: 'Cyber Monday', emoji: '💻', tip: 'Shop for homes from your couch - virtual tours and online listings' },
+  { date: '12-21', name: 'First Day of Winter', emoji: '❄️', tip: 'Cozy winter homes - fireplaces and winter wonderland properties' },
+  { date: '12-24', name: 'Christmas Eve', emoji: '🎄', tip: 'Home for the holidays - festive content and year-end reflections' },
+  { date: '12-25', name: 'Christmas', emoji: '🎅', tip: 'The gift of home - holiday hosting spaces' },
+  { date: '12-31', name: 'New Year\'s Eve', emoji: '🥂', tip: 'Cheers to new beginnings - 2026 real estate goals' }
+];
+
 // Track sent tasks to prevent duplicates
 let lastBiweeklyTaskDate = null;
 let lastSocialMediaDate = null;
@@ -683,7 +727,66 @@ async function sendSocialMediaSuggestions(client) {
   }
 }
 
-// Function to send email campaign suggestions
+// Function to send holiday reminders
+async function sendHolidayReminder(client, holiday) {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) return;
+    
+    const channel = guild.channels.cache.find(ch => ch.name === 'holidays🎉');
+    
+    if (channel) {
+      const messages = [
+        `Hi Jeraaa! ${holiday.emoji}`,
+        `**${holiday.name}** is coming up soon!`,
+        ``,
+        `💡 Content idea: ${holiday.tip}`,
+        ``,
+        `This could be a great opportunity for social media or newsletter content! 💜`
+      ];
+      
+      console.log(`🎉 Sending holiday reminder: ${holiday.name}`);
+      await sendMessagesWithDelay(channel, messages, 2000);
+    }
+  } catch (error) {
+    console.error('Error sending holiday reminder:', error);
+  }
+}
+
+// Function to check for upcoming holidays
+async function checkUpcomingHolidays(client) {
+  try {
+    const now = new Date();
+    const threeDaysLater = new Date(now);
+    threeDaysLater.setDate(now.getDate() + 3);
+    
+    const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const threeDaysStr = `${String(threeDaysLater.getMonth() + 1).padStart(2, '0')}-${String(threeDaysLater.getDate()).padStart(2, '0')}`;
+    
+    for (const holiday of usHolidays) {
+      // Check if holiday is in 3 days
+      if (holiday.date === threeDaysStr) {
+        await sendHolidayReminder(client, holiday);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Also send on the actual day for major holidays
+      const majorHolidays = ['New Year\'s Day', 'Valentine\'s Day', 'St. Patrick\'s Day', 'Independence Day', 
+                             'Halloween', 'Thanksgiving', 'Christmas', 'Mother\'s Day', 'Father\'s Day'];
+      
+      if (holiday.date === todayStr && majorHolidays.includes(holiday.name)) {
+        const guild = client.guilds.cache.first();
+        const channel = guild?.channels.cache.find(ch => ch.name === 'holidays🎉');
+        
+        if (channel) {
+          await channel.send(`${holiday.emoji} **Happy ${holiday.name}!** ${holiday.emoji}\n\nHope you're having a wonderful day, Jeraaa! 💜`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking holidays:', error);
+  }
+}
 async function sendEmailCampaignSuggestions(client) {
   try {
     const guild = client.guilds.cache.first();
@@ -856,6 +959,11 @@ function scheduleAllTasks(client) {
       await checkWebsiteUpdates(client);
     }
     
+    // Holiday reminders: check daily at 9 AM
+    if (hour === 9) {
+      await checkUpcomingHolidays(client);
+    }
+    
     // Newsletter reminders: 5 days before each scheduled send
     // Check if we're 5 days before any newsletter date
     const checkDate = new Date(now);
@@ -989,6 +1097,48 @@ client.on('messageCreate', async (message) => {
   // Manual website check trigger
   if (content.includes('check website') || content.includes('website updates')) {
     await manualWebsiteCheck(client, message.channel);
+    return;
+  }
+  
+  // Show upcoming holidays
+  if (content.includes('upcoming holidays') || content.includes('next holidays')) {
+    const now = new Date();
+    const upcoming = [];
+    
+    for (const holiday of usHolidays) {
+      const [month, day] = holiday.date.split('-').map(Number);
+      const holidayDate = new Date(now.getFullYear(), month - 1, day);
+      
+      if (holidayDate < now) {
+        holidayDate.setFullYear(now.getFullYear() + 1);
+      }
+      
+      const daysUntil = Math.ceil((holidayDate - now) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntil <= 30) {
+        upcoming.push({ ...holiday, daysUntil, fullDate: holidayDate });
+      }
+    }
+    
+    upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
+    
+    const messages = [
+      'Hi Jeraaa! 🎉 Here are the upcoming holidays in the next 30 days:',
+      ''
+    ];
+    
+    upcoming.forEach(h => {
+      const dateStr = h.fullDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      messages.push(`${h.emoji} **${h.name}** - ${dateStr} (${h.daysUntil} days)`);
+      messages.push(`   💡 ${h.tip}`);
+      messages.push('');
+    });
+    
+    if (upcoming.length === 0) {
+      messages.push('No major holidays in the next 30 days, but I\'ll keep you posted! 💜');
+    }
+    
+    await sendMessagesWithDelay(message.channel, messages, 1500);
     return;
   }
 
