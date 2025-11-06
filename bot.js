@@ -25,6 +25,9 @@ const client = new Client({
 const activeTasks = new Map(); // messageId -> { task, deadline, userId, channelId, completed: false }
 let lastWeeklyReminderDate = null;
 
+// Track task groups by channel and title
+const taskGroups = new Map(); // channelId+title -> { title, tasks: [messageIds], channelId, userId }
+
 // Task lists for real estate triggers
 const taskLists = {
   'coming soon': [
@@ -442,26 +445,178 @@ client.on('messageReactionAdd', async (reaction, user) => {
   }
   
   // Check if this is a thumbs up on a tracked task
-  if (reaction.emoji.name === '👍' && activeTasks.has(reaction.message.id)) {
-    const taskData = activeTasks.get(reaction.message.id);
+  if (reaction.emoji.name === '👍') {
+    const messageId = reaction.message.id;
+    const channelName = reaction.message.channel.name || '';
     
-    if (!taskData.completed) {
-      taskData.completed = true;
-      activeTasks.set(reaction.message.id, taskData);
+    // Mark message as completed
+    await reaction.message.react('✅');
+    
+    console.log(`👍 Thumbs up detected in channel: ${channelName}`);
+    
+    // Check if this is a real estate task channel
+    const realEstateChannels = ['coming-soon', 'just-listed', 'open-house', 'under-contract', 'just-closed'];
+    const isRealEstateChannel = realEstateChannels.some(ch => channelName.includes(ch));
+    
+    // Check if this is the biweekly tasks channel
+    const isBiweeklyChannel = channelName.includes('biweekly-task');
+    
+    if (isRealEstateChannel) {
+      console.log('🏠 Real estate channel detected, checking for completion...');
       
-      const congratsMessages = [
-        `🎉 Congrats on finishing your task, Jeraaa! 💜`,
-        `I knew you could do it! Amazing work! ✨`,
-        `You're absolutely crushing it! So proud of you! 🌟`
-      ];
+      // Find all messages in the current conversation thread
+      const messages = await reaction.message.channel.messages.fetch({ limit: 20 });
       
-      const randomCongrats = congratsMessages[Math.floor(Math.random() * congratsMessages.length)];
+      // Find the task title (first message from Fri that contains task info)
+      let taskTitle = null;
+      let taskMessages = [];
       
-      await reaction.message.channel.send(
-        `${randomCongrats}\n\n` +
-        `✅ **Completed:** ${taskData.task}\n\n` +
-        `Keep up the incredible work! You're doing amazing things! 💪💜`
+      // Look for the task title and all task messages
+      const sortedMessages = Array.from(messages.values()).sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+      
+      for (const msg of sortedMessages) {
+        if (msg.author.bot && msg.author.username.includes('Fri')) {
+          // Check if this is a task title message (contains address or property info)
+          if (!taskTitle && (msg.content.includes('here are your tasks') || msg.content.includes('Somerset') || msg.content.includes('NJ'))) {
+            // Try to extract title from previous user message or current message
+            const prevMessages = sortedMessages.filter(m => m.createdTimestamp < msg.createdTimestamp);
+            const userMsg = prevMessages.reverse().find(m => !m.author.bot);
+            if (userMsg) {
+              taskTitle = userMsg.content;
+            }
+          }
+          
+          // Collect all task messages with emojis
+          if (msg.content.match(/^[📋📸🎨✍️✅🚀💾🌐📍📰📬🎯📅💰💌📝💰📊✔️🏡📁]/)) {
+            taskMessages.push(msg);
+          }
+        }
+      }
+      
+      console.log(`📋 Found ${taskMessages.length} task messages`);
+      console.log(`📝 Task title: ${taskTitle}`);
+      
+      // Check if all tasks are completed (have 👍 or ✅ reactions)
+      let allCompleted = true;
+      for (const taskMsg of taskMessages) {
+        const hasThumbsUp = taskMsg.reactions.cache.some(r => r.emoji.name === '👍' && r.count > 0);
+        const hasCheckmark = taskMsg.reactions.cache.some(r => r.emoji.name === '✅' && r.count > 0);
+        
+        if (!hasThumbsUp && !hasCheckmark) {
+          allCompleted = false;
+          console.log(`⏳ Task not completed: ${taskMsg.content.substring(0, 50)}...`);
+          break;
+        }
+      }
+      
+      console.log(`${allCompleted ? '✅' : '⏳'} All tasks completed: ${allCompleted}`);
+      
+      if (allCompleted && taskMessages.length > 0) {
+        // Find main-chat channel
+        const mainChatChannel = reaction.message.guild.channels.cache.find(
+          ch => ch.name.includes('main-chat')
+        );
+        
+        if (mainChatChannel) {
+          const channelEmojis = {
+            'coming-soon': '🔜',
+            'just-listed': '⬆️',
+            'open-house': '🪧',
+            'under-contract': '🔁',
+            'just-closed': '⬇️'
+          };
+          
+          const emoji = Object.entries(channelEmojis).find(([key]) => channelName.includes(key))?.[1] || '✅';
+          
+          await mainChatChannel.send(
+            `🎉 Congratulations, Jeraaa! You've completed all tasks for:\n\n` +
+            `${emoji} **${taskTitle || 'Property Task'}**\n\n` +
+            `Great work staying on top of your marketing! 💼✨`
+          );
+          
+          console.log('✅ Congratulatory message sent to main-chat!');
+        }
+      }
+    }
+    
+    if (isBiweeklyChannel) {
+      console.log('📅 Biweekly tasks channel detected, checking for completion...');
+      
+      // Find all messages in the channel
+      const messages = await reaction.message.channel.messages.fetch({ limit: 50 });
+      
+      // Find all task messages from Fri (lines with ** markers)
+      const taskMessages = Array.from(messages.values()).filter(msg => 
+        msg.author.bot && 
+        msg.author.username.includes('Fri') &&
+        msg.content.includes('**') &&
+        !msg.content.includes('time for your biweekly tasks') &&
+        !msg.content.includes('That\'s all for this cycle')
       );
+      
+      console.log(`📋 Found ${taskMessages.length} biweekly task messages`);
+      
+      // Check if all tasks are completed
+      let allCompleted = true;
+      for (const taskMsg of taskMessages) {
+        const hasThumbsUp = taskMsg.reactions.cache.some(r => r.emoji.name === '👍' && r.count > 0);
+        const hasCheckmark = taskMsg.reactions.cache.some(r => r.emoji.name === '✅' && r.count > 0);
+        
+        if (!hasThumbsUp && !hasCheckmark) {
+          allCompleted = false;
+          console.log(`⏳ Biweekly task not completed: ${taskMsg.content.substring(0, 50)}...`);
+          break;
+        }
+      }
+      
+      console.log(`${allCompleted ? '✅' : '⏳'} All biweekly tasks completed: ${allCompleted}`);
+      
+      if (allCompleted && taskMessages.length > 0) {
+        // Find main-chat channel
+        const mainChatChannel = reaction.message.guild.channels.cache.find(
+          ch => ch.name.includes('main-chat')
+        );
+        
+        if (mainChatChannel) {
+          // Calculate next reset date (2 weeks from now)
+          const now = new Date();
+          const nextReset = new Date(now);
+          nextReset.setDate(now.getDate() + 14);
+          const resetDateStr = nextReset.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+          
+          await mainChatChannel.send(
+            `🎊 Congratulations, Jeraaa! You've completed all your biweekly tasks!\n\n` +
+            `Your next cycle will reset on **${resetDateStr}**.\n\n` +
+            `Excellent work staying organized and on schedule! 📅✨`
+          );
+          
+          console.log('✅ Biweekly completion message sent to main-chat!');
+        }
+      }
+    }
+    
+    // Handle individual task completion (existing code for new-tasks channel)
+    if (activeTasks.has(messageId)) {
+      const taskData = activeTasks.get(messageId);
+      
+      if (!taskData.completed) {
+        taskData.completed = true;
+        activeTasks.set(messageId, taskData);
+        
+        const congratsMessages = [
+          `🎉 Congrats on finishing your task, Jeraaa! 💜`,
+          `I knew you could do it! Amazing work! ✨`,
+          `You're absolutely crushing it! So proud of you! 🌟`
+        ];
+        
+        const randomCongrats = congratsMessages[Math.floor(Math.random() * congratsMessages.length)];
+        
+        await reaction.message.channel.send(
+          `${randomCongrats}\n\n` +
+          `✅ **Completed:** ${taskData.task}\n\n` +
+          `Keep up the incredible work! You're doing amazing things! 💪💜`
+        );
+      }
     }
   }
 });
