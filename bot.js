@@ -108,4 +108,4 @@ client.on('messageCreate', async (message) => {
 });
 
 // Login to Discord - REPLACE WITH YOUR ACTUAL BOT TOKEN
-client.login('process.env.DISCORD_BOT_TOKEN');
+   client.login(process.env.DISCORD_BOT_TOKEN);
