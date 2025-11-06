@@ -273,29 +273,69 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
+  // Debug logging
+  console.log(`📨 Message received in channel: "${message.channel.name}" from ${message.author.tag}`);
+  
+  if (message.author.bot) {
+    console.log('⏭️ Ignoring bot message');
+    return;
+  }
+  
   const content = message.content.toLowerCase();
+  console.log(`💬 Message content: "${content}"`);
 
-  // AI Prompts Channel Monitor
-  if (message.channel.name === 'ai-prompts-🤖') {
+  // AI Prompts Channel Monitor - Check multiple possible channel name formats
+  const channelName = message.channel.name || '';
+  console.log(`🔍 Checking channel name: "${channelName}"`);
+  
+  const isAIPromptsChannel = 
+    channelName === 'ai-prompts-🤖' || 
+    channelName === 'ai-prompts-' ||
+    channelName === 'ai-prompts' ||
+    channelName.startsWith('ai-prompts');
+  
+  console.log(`✅ Is AI Prompts channel? ${isAIPromptsChannel}`);
+  
+  if (isAIPromptsChannel) {
+    console.log('✨ AI Prompts channel detected! Processing message...');
+    
     let type = 'image';
     let style = 'cinematic';
     let theme = 'real estate';
     
+    // Detect type from message
     if (content.includes('video') || content.includes('clip')) type = 'video';
     if (content.includes('gif') || content.includes('animated')) type = 'gif';
-    if (content.includes('3d')) type = '3d';
+    if (content.includes('3d') || content.includes('animated')) type = '3d';
     
+    console.log(`🎬 Detected type: ${type}`);
+    
+    // Detect style from message
     if (content.includes('realistic') || content.includes('photo')) style = 'realistic';
     if (content.includes('cartoon') || content.includes('playful')) style = 'cartoon';
     if (content.includes('minimal')) style = 'minimalist';
     if (content.includes('luxury')) style = 'luxury';
     
+    console.log(`🎨 Detected style: ${style}`);
+    
+    // Detect theme from keywords
     const holidayKeywords = {
-      'independence': 'independence-day', 'july 4': 'independence-day',
-      'christmas': 'christmas', 'halloween': 'halloween',
-      'thanksgiving': 'thanksgiving', 'valentine': 'valentines-day',
-      'new year': 'new-years', 'mother': 'mothers-day', 'father': 'fathers-day'
+      'independence': 'Independence Day', 
+      'july 4': 'Independence Day',
+      'fourth of july': 'Independence Day',
+      'american flag': 'Independence Day',
+      'flag': 'patriotic',
+      'christmas': 'Christmas', 
+      'xmas': 'Christmas',
+      'halloween': 'Halloween',
+      'thanksgiving': 'Thanksgiving',
+      'valentine': 'Valentine\'s Day',
+      'new year': 'New Year\'s',
+      'mother': 'Mother\'s Day', 
+      'father': 'Father\'s Day',
+      'house': 'beautiful home',
+      'home': 'beautiful home',
+      'property': 'real estate property'
     };
     
     for (const [keyword, holidayTheme] of Object.entries(holidayKeywords)) {
@@ -305,37 +345,52 @@ client.on('messageCreate', async (message) => {
       }
     }
     
+    console.log(`🎯 Detected theme: ${theme}`);
+    
     const generatedPrompt = generateAIPrompt(theme, type, style);
     
-    const messages = [
-      `Hi Jeraaa! 🎨 I heard your vision!`,
-      ``,
-      `**What you asked for:** ${message.content}`,
-      ``,
-      `📋 **Your Custom AI Prompt:**`,
-      `\`\`\``,
-      generatedPrompt,
-      `\`\`\``,
-      ``,
-      `🔧 **Where to Use:**`,
-      `• **Midjourney**: /imagine [paste prompt]`,
-      `• **DALL-E**: Paste in ChatGPT`,
-      `• **Leonardo.ai**: Copy to prompt box`,
-      ``,
-      `💡 **Tips:**`,
-      `• Social posts: add "--ar 1:1"`,
-      `• Stories: add "--ar 9:16"`,
-      ``,
-      `Your vision is going to look AMAZING! 💜✨`
-    ];
+    console.log(`📝 Generated prompt: ${generatedPrompt.substring(0, 100)}...`);
     
-    await sendMessagesWithDelay(message.channel, messages, 1500);
+    try {
+      // Send immediate response
+      await message.channel.send(`Hi Jeraaa! 🎨 I heard your vision!\n\n**What you asked for:** ${message.content}`);
+      
+      // Small delay before sending the prompt
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await message.channel.send(`📋 **Your Custom AI Prompt:**\n\`\`\`${generatedPrompt}\`\`\``);
+      
+      // Another small delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await message.channel.send(
+        `🔧 **Where to Use:**\n` +
+        `• **Midjourney**: /imagine [paste prompt]\n` +
+        `• **DALL-E**: Paste in ChatGPT\n` +
+        `• **Leonardo.ai**: Copy to prompt box\n\n` +
+        `💡 **Tips:**\n` +
+        `• Social posts: add "--ar 1:1"\n` +
+        `• Stories: add "--ar 9:16"\n\n` +
+        `Your vision is going to look AMAZING! 💜✨`
+      );
+      
+      console.log('✅ AI Prompt sent successfully!');
+    } catch (error) {
+      console.error('❌ Error sending AI prompt:', error);
+      try {
+        await message.channel.send('❌ Oops! Something went wrong generating your prompt. Try again! 💜');
+      } catch (e) {
+        console.error('❌ Failed to send error message:', e);
+      }
+    }
+    
     return;
   }
 
   // Real estate triggers
   for (const [trigger, tasks] of Object.entries(taskLists)) {
     if (content.includes(trigger)) {
+      console.log(`🏠 Real estate trigger detected: ${trigger}`);
       const personalizedTasks = tasks.map(task => task.replace('<@USER_ID>', `<@${message.author.id}>`));
       await sendMessagesWithDelay(message.channel, personalizedTasks);
       break;
