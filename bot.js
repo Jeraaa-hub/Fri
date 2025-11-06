@@ -297,6 +297,12 @@ client.on('interactionCreate', async (interaction) => {
   
   try {
     if (interaction.commandName === 'newtask') {
+      // Reply immediately to avoid timeout
+      await interaction.reply({
+        content: '⏳ Creating your task...',
+        flags: 64 // This is the ephemeral flag
+      });
+
       const task = interaction.options.getString('task');
       const deadline = interaction.options.getString('deadline');
       const userId = interaction.user.id;
@@ -308,9 +314,8 @@ client.on('interactionCreate', async (interaction) => {
       );
       
       if (!newTasksChannel) {
-        await interaction.reply({
-          content: '❌ Could not find the new-tasks-📦 channel! Please make sure it exists.',
-          ephemeral: true
+        await interaction.editReply({
+          content: '❌ Could not find the new-tasks-📦 channel! Please make sure it exists.'
         });
         return;
       }
@@ -333,9 +338,8 @@ client.on('interactionCreate', async (interaction) => {
         createdAt: new Date().toISOString()
       });
       
-      await interaction.reply({
-        content: `✅ Task created successfully! Check <#${newTasksChannel.id}> 💜`,
-        ephemeral: true
+      await interaction.editReply({
+        content: `✅ Task created successfully! Check <#${newTasksChannel.id}> 💜`
       });
     }
     
