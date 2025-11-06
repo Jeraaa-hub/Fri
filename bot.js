@@ -202,78 +202,73 @@ client.on('ready', async () => {
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
+  
   try {
-    await interaction.deferReply();
-
     if (interaction.commandName === 'prompt') {
       const theme = interaction.options.getString('theme');
       const type = interaction.options.getString('type');
       const style = interaction.options.getString('style') || 'cinematic';
       const generatedPrompt = generateAIPrompt(theme, type, style);
       
-      const messages = [
-        `🎨 **AI Prompt Generator** 💜`,
-        ``,
+      // Build the complete message
+      const response = [
+        `🎨 **AI Prompt Generator** 💜\n`,
         `**Theme:** ${theme}`,
         `**Type:** ${type}`,
-        `**Style:** ${style}`,
-        ``,
+        `**Style:** ${style}\n`,
         `📋 **Your Custom Prompt:**`,
-        `\`\`\``,
-        generatedPrompt,
-        `\`\`\``,
-        ``,
+        `\`\`\`${generatedPrompt}\`\`\`\n`,
         `🔧 **Where to Use This:**`,
         `• **Midjourney** (Discord): Just paste this prompt!`,
         `• **DALL-E** (ChatGPT Plus): Use in ChatGPT's image generator`,
         `• **Leonardo.ai**: Paste in the prompt box`,
-        `• **Runway ML**: For video generation`,
-        ``,
+        `• **Runway ML**: For video generation\n`,
         `💡 **Pro Tips:**`,
         `• Add "--ar 16:9" for horizontal posts`,
         `• Add "--ar 9:16" for Instagram stories`,
-        `• Add "--ar 1:1" for square posts`,
-        ``,
+        `• Add "--ar 1:1" for square posts\n`,
         `You've got this! 💜✨`
-      ];
+      ].join('\n');
       
-      await sendMessagesWithDelay(interaction.channel, messages, 1500);
-      await interaction.editReply('✅ Prompt generated! 🎨');
+      // Reply immediately to avoid timeout
+      await interaction.reply(response);
     }
     
     else if (interaction.commandName === 'resources') {
-      const messages = [
-        `🎨 **Free Design Resources** 💜`,
-        ``,
+      const response = [
+        `🎨 **Free Design Resources** 💜\n`,
         `📸 **Free Stock Videos:**`,
         `• Pexels Videos - https://www.pexels.com/videos/`,
-        `• Pixabay - https://pixabay.com/videos/`,
-        ``,
+        `• Pixabay - https://pixabay.com/videos/\n`,
         `✨ **AI Image Generators:**`,
         `• Midjourney - https://midjourney.com (Discord-based!)`,
         `• Leonardo.ai - https://leonardo.ai (Free tier!)`,
-        `• DALL-E - https://openai.com/dall-e (ChatGPT Plus)`,
-        ``,
+        `• DALL-E - https://openai.com/dall-e (ChatGPT Plus)\n`,
         `🎬 **AI Video Generators:**`,
         `• Runway ML - https://runwayml.com`,
-        `• Pika Labs - https://pika.art`,
-        ``,
+        `• Pika Labs - https://pika.art\n`,
         `🎭 **GIF Makers:**`,
         `• Canva - https://www.canva.com`,
-        `• GIPHY Create - https://giphy.com/create/gifmaker`,
-        ``,
-        `💡 **My Recommendation:** Start with Canva for basics, then use Leonardo.ai or Midjourney for AI!`,
-        ``,
+        `• GIPHY Create - https://giphy.com/create/gifmaker\n`,
+        `💡 **My Recommendation:** Start with Canva for basics, then use Leonardo.ai or Midjourney for AI!\n`,
         `You're going to create amazing content! 💜✨`
-      ];
+      ].join('\n');
       
-      await sendMessagesWithDelay(interaction.channel, messages, 1500);
-      await interaction.editReply('✅ Resources sent! 🎨');
+      // Reply immediately to avoid timeout
+      await interaction.reply(response);
     }
     
   } catch (error) {
     console.error('Error handling command:', error);
-    await interaction.editReply('❌ Something went wrong!');
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply('❌ Something went wrong!');
+      } else {
+        await interaction.reply({ content: '❌ Something went wrong!', ephemeral: true });
+      }
+    } catch (e) {
+      console.error('Error sending error message:', e);
+    }
   }
 });
 
