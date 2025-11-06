@@ -84,11 +84,11 @@ const taskLists = {
 const biweeklyTasks = [
   "💜 Hi there! It's time for your biweekly tasks. I'm here with you, let's tackle these together! 🌟",
   "**Newsletter**📰",
-  "**Email Campaigns** — Home Actions On Target and Smartplan (if necessary). 📧",
-  "**Website and Google Business Page Updates** (if necessary) 🌐 ",
-  "**Social Media Updates** (if necessary) 📱 ",
-  "**Hub Events**"🎉 ,
-  "**Bookkeeping**"📊 ,
+  "**Email Campaigns** — Home Actions On Target and Smartplan (if necessary)📧",
+  "**Website and Google Business Page Updates** (if necessary)🌐",
+  "**Social Media Updates** (if necessary)📱",
+  "**Hub Events**🎉" ,
+  "**Bookkeeping📊**" ,
   "🎊 That's all for this cycle! You have two weeks, but I know you'll do amazing. I believe in you! Remember, progress over perfection. 💜"
 ];
 
