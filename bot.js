@@ -302,7 +302,257 @@ let lastBiweeklyTaskDate = null;
 let lastSocialMediaDate = null;
 let lastYearlyThemeDate = null;
 
+// Website monitoring
+const WEBSITE_URL = 'https://thegroomesrealtygroup.kw.com/';
+let previousWebsiteState = {
+  blogs: [],
+  listings: [],
+  pages: [],
+  vendors: [],
+  reviews: [],
+  openHouses: [],
+  listingStatuses: {} // Track status of each listing (active, under contract, sold, etc)
+};
+
+// Function to check website for updates
+async function checkWebsiteUpdates(client) {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) return;
+    
+    const channel = guild.channels.cache.find(ch => ch.name === 'website🌍');
+    if (!channel) return;
+    
+    // Fetch website content
+    const response = await fetch(WEBSITE_URL);
+    const html = await response.text();
+    
+    // Parse current state
+    const currentBlogs = [];
+    const currentListings = [];
+    const currentVendors = [];
+    const currentReviews = [];
+    const currentOpenHouses = [];
+    const currentListingStatuses = {};
+    
+    // Extract blog links
+    const blogMatches = html.matchAll(/href="([^"]*\/blog\/[^"]*)"/g);
+    for (const match of blogMatches) {
+      currentBlogs.push(match[1]);
+    }
+    
+    // Extract listing links and their statuses
+    const listingMatches = html.matchAll(/href="([^"]*\/listing\/[^"]*)"[^>]*>[\s\S]*?<[^>]*class="[^"]*status[^"]*"[^>]*>(.*?)<\/[^>]*>/gi);
+    for (const match of listingMatches) {
+      const url = match[1];
+      const status = match[2] ? match[2].trim().toLowerCase() : 'active';
+      currentListings.push(url);
+      currentListingStatuses[url] = status;
+    }
+    
+    // Also catch listings without explicit status tags
+    const simpleListingMatches = html.matchAll(/href="([^"]*\/listing\/[^"]*)"/g);
+    for (const match of simpleListingMatches) {
+      if (!currentListings.includes(match[1])) {
+        currentListings.push(match[1]);
+        // Check if status keywords are near the link
+        const contextStart = Math.max(0, match.index - 200);
+        const contextEnd = Math.min(html.length, match.index + 200);
+        const context = html.substring(contextStart, contextEnd).toLowerCase();
+        
+        if (context.includes('under contract') || context.includes('pending')) {
+          currentListingStatuses[match[1]] = 'under contract';
+        } else if (context.includes('sold')) {
+          currentListingStatuses[match[1]] = 'sold';
+        } else if (context.includes('rented')) {
+          currentListingStatuses[match[1]] = 'rented';
+        } else if (context.includes('for rent')) {
+          currentListingStatuses[match[1]] = 'for rent';
+        } else {
+          currentListingStatuses[match[1]] = 'active';
+        }
+      }
+    }
+    
+    // Extract vendors from "Handpicked Local Experts" or similar sections
+    const vendorMatches = html.matchAll(/class="[^"]*vendor[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi);
+    for (const match of vendorMatches) {
+      const vendorName = match[2].replace(/<[^>]*>/g, '').trim();
+      currentVendors.push(vendorName);
+    }
+    
+    // Also look for expert/professional sections
+    const expertMatches = html.matchAll(/class="[^"]*expert[^"]*"[^>]*>[\s\S]*?<[^>]*>(.*?)<\/[^>]*>/gi);
+    for (const match of expertMatches) {
+      const expertName = match[1].replace(/<[^>]*>/g, '').trim();
+      if (expertName.length > 2 && expertName.length < 100) {
+        currentVendors.push(expertName);
+      }
+    }
+    
+    // Extract reviews from "Client Success Stories" or testimonials
+    const reviewMatches = html.matchAll(/class="[^"]*(review|testimonial|success)[^"]*"[^>]*>[\s\S]*?<[^>]*>(.*?)<\/[^>]*>/gi);
+    for (const match of reviewMatches) {
+      const reviewText = match[2].replace(/<[^>]*>/g, '').trim().substring(0, 100);
+      if (reviewText.length > 10) {
+        currentReviews.push(reviewText);
+      }
+    }
+    
+    // Extract open houses
+    const openHouseMatches = html.matchAll(/href="([^"]*open[_-]?house[^"]*)"/gi);
+    for (const match of openHouseMatches) {
+      currentOpenHouses.push(match[1]);
+    }
+    
+    // Also look for open house events in calendar or event sections
+    const eventMatches = html.matchAll(/class="[^"]*event[^"]*"[^>]*>[\s\S]*?open\s*house[\s\S]*?href="([^"]*)"/gi);
+    for (const match of eventMatches) {
+      if (!currentOpenHouses.includes(match[1])) {
+        currentOpenHouses.push(match[1]);
+      }
+    }
+    
+    // Check for NEW BLOGS
+    for (const blog of currentBlogs) {
+      if (!previousWebsiteState.blogs.includes(blog)) {
+        const fullUrl = blog.startsWith('http') ? blog : `${WEBSITE_URL}${blog.replace(/^\//, '')}`;
+        await channel.send(`📝 **New blog has been added to your website!**\n${fullUrl}`);
+        console.log(`📝 New blog detected: ${fullUrl}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Check for NEW LISTINGS
+    for (const listing of currentListings) {
+      if (!previousWebsiteState.listings.includes(listing)) {
+        const fullUrl = listing.startsWith('http') ? listing : `${WEBSITE_URL}${listing.replace(/^\//, '')}`;
+        const status = currentListingStatuses[listing];
+        await channel.send(`🏡 **New listing has been added to your website!**\nStatus: ${status}\n${fullUrl}`);
+        console.log(`🏡 New listing detected: ${fullUrl}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Check for LISTING STATUS CHANGES
+    for (const listing of currentListings) {
+      const oldStatus = previousWebsiteState.listingStatuses[listing];
+      const newStatus = currentListingStatuses[listing];
+      
+      if (oldStatus && oldStatus !== newStatus) {
+        const fullUrl = listing.startsWith('http') ? listing : `${WEBSITE_URL}${listing.replace(/^\//, '')}`;
+        let emoji = '🏠';
+        let message = '';
+        
+        if (newStatus.includes('under contract') || newStatus.includes('pending')) {
+          emoji = '🎊';
+          message = `${emoji} **Your listing is now Under Contract!**\n${fullUrl}`;
+        } else if (newStatus.includes('sold')) {
+          emoji = '🎉';
+          message = `${emoji} **Congratulations! Your listing has been Sold!**\n${fullUrl}`;
+        } else if (newStatus.includes('rented')) {
+          emoji = '🔑';
+          message = `${emoji} **Your listing has been Rented!**\n${fullUrl}`;
+        } else if (newStatus.includes('for rent')) {
+          emoji = '🏘️';
+          message = `${emoji} **Your listing is now available For Rent!**\n${fullUrl}`;
+        } else if (newStatus === 'active' && oldStatus !== 'active') {
+          emoji = '✨';
+          message = `${emoji} **Your listing is now Active again!**\n${fullUrl}`;
+        } else {
+          message = `🏠 **Listing status updated:** ${oldStatus} → ${newStatus}\n${fullUrl}`;
+        }
+        
+        await channel.send(message);
+        console.log(`📊 Status change: ${listing} - ${oldStatus} → ${newStatus}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Check for NEW VENDORS
+    for (const vendor of currentVendors) {
+      if (!previousWebsiteState.vendors.includes(vendor)) {
+        await channel.send(`👥 **New vendor added to Handpicked Local Experts:**\n${vendor}`);
+        console.log(`👥 New vendor: ${vendor}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Check for REMOVED VENDORS
+    for (const vendor of previousWebsiteState.vendors) {
+      if (!currentVendors.includes(vendor)) {
+        await channel.send(`👋 **Vendor removed from Handpicked Local Experts:**\n${vendor}`);
+        console.log(`👋 Removed vendor: ${vendor}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Check for NEW REVIEWS
+    for (const review of currentReviews) {
+      if (!previousWebsiteState.reviews.includes(review)) {
+        await channel.send(`⭐ **New review added to Client Success Stories!**\n"${review}..."\nCheck your website for the full review!`);
+        console.log(`⭐ New review detected`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Check for NEW OPEN HOUSES
+    for (const openHouse of currentOpenHouses) {
+      if (!previousWebsiteState.openHouses.includes(openHouse)) {
+        const fullUrl = openHouse.startsWith('http') ? openHouse : `${WEBSITE_URL}${openHouse.replace(/^\//, '')}`;
+        await channel.send(`🏠✨ **Open House is being hosted!**\nCheck the details here: ${fullUrl}`);
+        console.log(`🏠 New open house: ${fullUrl}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // Update the state
+    previousWebsiteState.blogs = currentBlogs;
+    previousWebsiteState.listings = currentListings;
+    previousWebsiteState.vendors = currentVendors;
+    previousWebsiteState.reviews = currentReviews;
+    previousWebsiteState.openHouses = currentOpenHouses;
+    previousWebsiteState.listingStatuses = currentListingStatuses;
+    
+  } catch (error) {
+    console.error('Error checking website updates:', error);
+  }
+}
+
 // Function to send messages with delay
+async function manualWebsiteCheck(client, channel) {
+  try {
+    await channel.send('🔍 Checking the website for updates...');
+    
+    const response = await fetch(WEBSITE_URL);
+    const html = await response.text();
+    
+    const blogs = [];
+    const listings = [];
+    
+    const blogMatches = html.matchAll(/href="([^"]*\/blog\/[^"]*)"/g);
+    for (const match of blogMatches) {
+      blogs.push(match[1]);
+    }
+    
+    const listingMatches = html.matchAll(/href="([^"]*\/listing\/[^"]*)"/g);
+    for (const match of listingMatches) {
+      listings.push(match[1]);
+    }
+    
+    await channel.send(`✅ Website check complete!\n📝 Found ${blogs.length} blog posts\n🏡 Found ${listings.length} listings\n\nI'm now monitoring for any changes! 💜`);
+    
+    // Initialize state if first time
+    if (previousWebsiteState.blogs.length === 0) {
+      previousWebsiteState.blogs = blogs;
+      previousWebsiteState.listings = listings;
+    }
+    
+  } catch (error) {
+    await channel.send('❌ Sorry, I had trouble checking the website. Please try again later.');
+    console.error('Error in manual website check:', error);
+  }
+}
 async function sendMessagesWithDelay(channel, messages, delay = 3000) {
   for (const message of messages) {
     await channel.send(message);
@@ -601,6 +851,11 @@ function scheduleAllTasks(client) {
       await sendSocialMediaSuggestions(client);
     }
     
+    // Website monitoring: every 2 hours
+    if (hour % 2 === 0) {
+      await checkWebsiteUpdates(client);
+    }
+    
     // Newsletter reminders: 5 days before each scheduled send
     // Check if we're 5 days before any newsletter date
     const checkDate = new Date(now);
@@ -728,6 +983,12 @@ client.on('messageCreate', async (message) => {
   // Manual email campaign trigger
   if (content.includes('email ideas') || content.includes('campaign ideas')) {
     await sendEmailCampaignSuggestions(client);
+    return;
+  }
+  
+  // Manual website check trigger
+  if (content.includes('check website') || content.includes('website updates')) {
+    await manualWebsiteCheck(client, message.channel);
     return;
   }
 
