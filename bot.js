@@ -522,4 +522,59 @@ client.on('messageCreate', async (message) => {
     };
     
     for (const [keyword, holidayTheme] of Object.entries(holidayKeywords)) {
-      if (content.includes(keywor
+      if (content.includes(keyword)) {
+        theme = holidayTheme;
+        break;
+      }
+    }
+    
+    console.log(`🎯 Detected theme: ${theme}`);
+    
+    const generatedPrompt = generateAIPrompt(theme, type, style);
+    
+    console.log(`📝 Generated prompt: ${generatedPrompt.substring(0, 100)}...`);
+    
+    try {
+      await message.channel.send(`Hi Jeraaa! 🎨 I heard your vision!\n\n**What you asked for:** ${message.content}`);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await message.channel.send(`📋 **Your Custom AI Prompt:**\n\`\`\`${generatedPrompt}\`\`\``);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await message.channel.send(
+        `🔧 **Where to Use:**\n` +
+        `• **Midjourney**: /imagine [paste prompt]\n` +
+        `• **DALL-E**: Paste in ChatGPT\n` +
+        `• **Leonardo.ai**: Copy to prompt box\n\n` +
+        `💡 **Tips:**\n` +
+        `• Social posts: add "--ar 1:1"\n` +
+        `• Stories: add "--ar 9:16"\n\n` +
+        `Your vision is going to look AMAZING! 💜✨`
+      );
+      
+      console.log('✅ AI Prompt sent successfully!');
+    } catch (error) {
+      console.error('❌ Error sending AI prompt:', error);
+      try {
+        await message.channel.send('❌ Oops! Something went wrong generating your prompt. Try again! 💜');
+      } catch (e) {
+        console.error('❌ Failed to send error message:', e);
+      }
+    }
+    
+    return;
+  }
+
+  for (const [trigger, tasks] of Object.entries(taskLists)) {
+    if (content.includes(trigger)) {
+      console.log(`🏠 Real estate trigger detected: ${trigger}`);
+      const personalizedTasks = tasks.map(task => task.replace('<@USER_ID>', `<@${message.author.id}>`));
+      await sendMessagesWithDelay(message.channel, personalizedTasks);
+      break;
+    }
+  }
+});
+
+client.login(process.env.DISCORD_BOT_TOKEN);
