@@ -1,4 +1,16 @@
 const { Client, GatewayIntentBits } = require('discord.js');
+const http = require('http');
+
+// Create a simple HTTP server to keep Render happy
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Fri 💜 is running!');
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🌐 HTTP server listening on port ${PORT}`);
+});
 
 const client = new Client({
   intents: [
@@ -84,7 +96,7 @@ const biweeklyTasks = [
   "🎊 That's all for this cycle! You have two weeks, but I know you'll do amazing. I believe in you! Remember, progress over perfection. 💜"
 ];
 
-// Encouraging check-in messages (will randomly pick one)
+// Encouraging check-in messages
 const checkInMessages = [
   [
     "Hey! 👋 Just checking in on you.",
@@ -120,483 +132,49 @@ const checkInMessages = [
 
 // Newsletter themes with their 2025 dates
 const newsletterThemes2025 = [
-  { date: '2025-01-01', theme: 'Happy New Year', topics: [
-    'New Year, New Home: Why January is Perfect for House Hunting in NJ',
-    'New Year\'s Resolutions for Homeowners: Property Goals for 2025',
-    'Fresh Start: How to Prepare Your Home for Sale in the New Year',
-    'January Market Trends: What NJ Homebuyers Need to Know',
-    'New Year Home Maintenance Checklist for New Jersey Properties'
-  ]},
-  { date: '2025-01-02', theme: "Keith's Birthday", topics: [
-    'Celebrating Milestones: Why Home is Where Life\'s Best Memories Are Made',
-    'Gift Yourself a New Home: January Home Buying Advantages',
-    'Party-Ready Homes: Properties Perfect for Entertaining in NJ',
-    'Investment in Yourself: Real Estate as a Birthday Gift to Your Future',
-    'New Jersey Homes with Entertainment Spaces Worth Celebrating'
-  ]},
-  { date: '2025-01-15', theme: 'Martin Luther King Jr. Day', topics: [
-    'Building Communities: The Dream of Homeownership in New Jersey',
-    'Equal Housing Opportunities: What Every NJ Homebuyer Should Know',
-    'Community and Connection: Finding Your Perfect Neighborhood in NJ',
-    'The Legacy of Home: Building Wealth Through Real Estate',
-    'Diverse Communities in New Jersey: Where Everyone Belongs'
-  ]},
-  { date: '2025-01-24', theme: 'Black History Month Teaser', topics: [
-    'Celebrating Black History Through Homeownership in New Jersey',
-    'Historic Black Neighborhoods in NJ and Their Real Estate Legacy',
-    'Breaking Barriers: Black Excellence in New Jersey Real Estate',
-    'Building Generational Wealth Through Property Ownership',
-    'February Preview: Honoring Black History and Homeownership'
-  ]},
-  { date: '2025-02-09', theme: 'Valentines Day', topics: [
-    'Fall in Love with Your Dream Home This Valentine\'s Day',
-    'Love Where You Live: Finding Your Perfect Match in NJ Real Estate',
-    'Romantic Homes: Properties with Charm and Character in New Jersey',
-    'Couples\' Guide to Buying Your First Home Together in NJ',
-    'Valentine\'s Day Home Staging Tips to Make Buyers Fall in Love'
-  ]},
-  { date: '2025-02-23', theme: 'Black History Month', topics: [
-    'Honoring Black History: Homeownership as a Path to Prosperity',
-    'Historic Black-Owned Properties and Neighborhoods in New Jersey',
-    'The Impact of Black Real Estate Professionals in NJ',
-    'From Struggle to Success: Black Homeownership Stories in New Jersey',
-    'Building Legacy: How Real Estate Creates Generational Wealth'
-  ]},
-  { date: '2025-03-08', theme: 'St. Patrick\'s Day / Daylight Saving / International Women\'s Day', topics: [
-    'Luck of the Irish: Finding Your Pot of Gold in NJ Real Estate',
-    'Spring Forward into Homeownership: Daylight Saving Market Boost',
-    'Empowered Women in Real Estate: Celebrating Homeownership',
-    'Green Homes: Eco-Friendly Properties in New Jersey',
-    'March Market Momentum: Why Spring is Prime Time for NJ Buyers'
-  ]},
-  { date: '2025-03-22', theme: 'Good Friday / Easter Monday', topics: [
-    'Spring Renewal: Fresh Starts in New Jersey Real Estate',
-    'Easter Weekend Open Houses: Finding Your Perfect Home',
-    'Springtime Curb Appeal: Preparing Your NJ Home for Sale',
-    'Family-Friendly Homes Perfect for Easter Celebrations',
-    'New Beginnings: Why Spring is the Season to Buy in New Jersey'
-  ]},
-  { date: '2025-04-05', theme: 'World Health Day', topics: [
-    'Healthy Homes: Properties That Promote Wellness in New Jersey',
-    'Home Features That Support Your Health and Well-Being',
-    'Access to Healthcare: NJ Neighborhoods Near Top Medical Facilities',
-    'Clean Air, Clean Living: Energy-Efficient Homes in New Jersey',
-    'Mental Health and Your Home: Creating Peaceful Spaces'
-  ]},
-  { date: '2025-04-19', theme: 'Passover / Earth Day', topics: [
-    'Freedom and Home: The Significance of Homeownership',
-    'Earth Day: Sustainable and Eco-Friendly Homes in New Jersey',
-    'Green Living: Energy-Efficient Properties That Save Money',
-    'Spring Cleaning Your Home for the Earth (and for Sale!)',
-    'NJ Homes Near Parks and Natural Spaces for Earth Lovers'
-  ]},
-  { date: '2025-05-03', theme: 'Cinco De Mayo / Mother\'s Day', topics: [
-    'Celebrating Home: Properties Perfect for Family Gatherings',
-    'Mother\'s Day Gift: Helping Mom Find Her Dream Home',
-    'Homes with Heart: Properties That Bring Families Together in NJ',
-    'Outdoor Spaces Perfect for Cinco de Mayo Celebrations',
-    'Family-Focused Neighborhoods in New Jersey'
-  ]},
-  { date: '2025-05-17', theme: 'Armed Forces Day / Memorial Day', topics: [
-    'Honoring Service: VA Loan Benefits for Military Families in NJ',
-    'Homes for Heroes: Supporting Veterans in New Jersey Real Estate',
-    'Memorial Day Weekend: Kickstart Your Home Search',
-    'Properties Near Military Bases and Veterans Services in NJ',
-    'Thank You for Your Service: Resources for Military Homebuyers'
-  ]},
-  { date: '2025-05-31', theme: 'Flag Day / Father\'s Day', topics: [
-    'Dad\'s Dream Home: Finding Properties with Workshop Space',
-    'Patriotic Pride: American-Made Home Features and Materials',
-    'Father\'s Day: Homes with Garage Space and Man Caves in NJ',
-    'Family Legacy: Why Homeownership Matters for Fathers',
-    'Summer Home Buying: Flag Day Marks the Start of Prime Season'
-  ]},
-  { date: '2025-06-28', theme: 'Independence Day', topics: [
-    'Declare Your Independence: First-Time Homebuyer Guide for NJ',
-    'July 4th Celebrations: Homes with Outdoor Entertainment Spaces',
-    'Freedom of Homeownership: Breaking Free from Renting',
-    'Firework Views: Properties with Spectacular Outdoor Spaces',
-    'Summer Market Sizzle: Why July is Hot for NJ Real Estate'
-  ]},
-  { date: '2025-07-26', theme: 'Parent\'s Day', topics: [
-    'Homes for Growing Families: Best School Districts in New Jersey',
-    'Parenting and Property: Creating the Perfect Family Home',
-    'Multi-Generational Homes: Space for the Whole Family in NJ',
-    'Safe Neighborhoods: Where to Raise Your Family in New Jersey',
-    'Home Features Parents Love: Yards, Playrooms, and Storage'
-  ]},
-  { date: '2025-08-23', theme: 'Labor Day + Donna\'s Birthday', topics: [
-    'Labor Day Market Shift: What NJ Buyers Need to Know',
-    'Celebrating Hard Work: Your Labor Deserves a Dream Home',
-    'End of Summer Home Deals: Labor Day Opportunities in NJ',
-    'Birthday Wishes: Milestone Celebrations in Your New Home',
-    'September Market Preview: Post-Labor Day Real Estate Trends'
-  ]},
-  { date: '2025-09-06', theme: 'Grandparents Day / Patriot Day', topics: [
-    'Multi-Generational Living: Homes Perfect for Grandparents in NJ',
-    'Honoring Grandparents: Creating Legacy Through Homeownership',
-    'Remembering 9/11: Community and Home in New Jersey',
-    'Properties Near Senior Services and Healthcare in NJ',
-    'September Home Buying: Fall Market Advantages'
-  ]},
-  { date: '2025-09-20', theme: 'Native American Day / Fall', topics: [
-    'Honoring Heritage: Historic Properties in New Jersey',
-    'Fall in Love with These Autumn-Ready New Jersey Homes',
-    'Cozy Up: Homes with Fireplaces and Fall Charm in NJ',
-    'Autumn Home Maintenance: Preparing for Winter in New Jersey',
-    'Fall Colors and Curb Appeal: Landscaping Tips for Sellers'
-  ]},
-  { date: '2025-10-04', theme: 'Indigenous People\'s Day', topics: [
-    'Honoring Indigenous Heritage: Historic Lands in New Jersey',
-    'Respecting the Land: Sustainable Homeownership Practices',
-    'October Market: Why Fall is a Great Time to Buy in NJ',
-    'Native American History and New Jersey Real Estate',
-    'Building on Tradition: Community-Focused Neighborhoods'
-  ]},
-  { date: '2025-10-18', theme: 'Halloween', topics: [
-    'Spooktacular Homes: Properties with Halloween Charm in NJ',
-    'Not So Scary: First-Time Homebuyer Myths Debunked',
-    'Historic Homes with Character (and Maybe Ghosts!) in New Jersey',
-    'Trick or Treat Streets: Family-Friendly Neighborhoods in NJ',
-    'Fall Curb Appeal: Making Your Home Stand Out This Season'
-  ]},
-  { date: '2025-11-01', theme: 'Fallback / Veteran\'s Day', topics: [
-    'Fall Back into Homeownership: November Market Opportunities',
-    'Honoring Veterans: VA Loans and Benefits in New Jersey',
-    'Cozy Homes for Winter: Properties with Energy Efficiency',
-    'Thank You for Your Service: Resources for Veteran Homebuyers',
-    'Late Fall Market: Hidden Gems and Motivated Sellers in NJ'
-  ]},
-  { date: '2025-11-15', theme: 'Thanksgiving + Black Friday + Cyber Monday', topics: [
-    'Grateful for Home: What We\'re Thankful for This Season',
-    'Holiday Hosting: Homes Perfect for Thanksgiving Gatherings',
-    'Black Friday Deals? How About a New Home in New Jersey!',
-    'Cyber Monday: Search NJ Listings from Your Couch',
-    'November Negotiations: End-of-Year Real Estate Opportunities'
-  ]},
-  { date: '2025-11-29', theme: 'Pearl Harbor Day', topics: [
-    'Remembering Pearl Harbor: Honor and Homeownership',
-    'December Market Preview: Year-End Real Estate in NJ',
-    'Military Families: Finding Home After Service',
-    'Historical Significance: Preserving Heritage Through Property',
-    'End of Year Planning: Real Estate Goals for 2026'
-  ]},
-  { date: '2025-12-13', theme: 'Winter Solstice Day + Christmas', topics: [
-    'Home for the Holidays: Christmas in Your New Jersey Home',
-    'Winter Solstice: New Beginnings in Real Estate',
-    'Holiday Home Staging: Making Your Property Festive for Buyers',
-    'Gift of Home: Why December Can Be Great for Buying',
-    'Cozy Winter Properties: Homes with Holiday Charm in NJ'
-  ]},
-  { date: '2025-12-27', theme: 'New Year', topics: [
-    'Ringing in 2026: Setting Real Estate Goals for the New Year',
-    'Year-End Market Wrap: 2025 NJ Real Estate Highlights',
-    'New Year, New Home: Planning Your 2026 Home Purchase',
-    'Reflecting on Home: Gratitude and Growth in Real Estate',
-    'Starting Fresh: January 2026 Market Preview for New Jersey'
-  ]}
+  { date: '2025-01-01', theme: 'Happy New Year', topics: ['New Year, New Home: Why January is Perfect for House Hunting in NJ', 'New Year\'s Resolutions for Homeowners: Property Goals for 2025', 'Fresh Start: How to Prepare Your Home for Sale in the New Year', 'January Market Trends: What NJ Homebuyers Need to Know', 'New Year Home Maintenance Checklist for New Jersey Properties']},
+  { date: '2025-01-02', theme: "Keith's Birthday", topics: ['Celebrating Milestones: Why Home is Where Life\'s Best Memories Are Made', 'Gift Yourself a New Home: January Home Buying Advantages', 'Party-Ready Homes: Properties Perfect for Entertaining in NJ', 'Investment in Yourself: Real Estate as a Birthday Gift to Your Future', 'New Jersey Homes with Entertainment Spaces Worth Celebrating']},
+  { date: '2025-01-15', theme: 'Martin Luther King Jr. Day', topics: ['Building Communities: The Dream of Homeownership in New Jersey', 'Equal Housing Opportunities: What Every NJ Homebuyer Should Know', 'Community and Connection: Finding Your Perfect Neighborhood in NJ', 'The Legacy of Home: Building Wealth Through Real Estate', 'Diverse Communities in New Jersey: Where Everyone Belongs']},
+  { date: '2025-02-09', theme: 'Valentines Day', topics: ['Fall in Love with Your Dream Home This Valentine\'s Day', 'Love Where You Live: Finding Your Perfect Match in NJ Real Estate', 'Romantic Homes: Properties with Charm and Character in New Jersey', 'Couples\' Guide to Buying Your First Home Together in NJ', 'Valentine\'s Day Home Staging Tips to Make Buyers Fall in Love']},
+  { date: '2025-03-08', theme: 'St. Patrick\'s Day / International Women\'s Day', topics: ['Luck of the Irish: Finding Your Pot of Gold in NJ Real Estate', 'Spring Forward into Homeownership', 'Empowered Women in Real Estate: Celebrating Homeownership', 'Green Homes: Eco-Friendly Properties in New Jersey', 'March Market Momentum: Why Spring is Prime Time for NJ Buyers']},
+  { date: '2025-04-19', theme: 'Earth Day', topics: ['Earth Day: Sustainable and Eco-Friendly Homes in New Jersey', 'Green Living: Energy-Efficient Properties That Save Money', 'Spring Cleaning Your Home for the Earth', 'NJ Homes Near Parks and Natural Spaces', 'Building a Sustainable Future Through Smart Homeownership']},
+  { date: '2025-05-03', theme: 'Mother\'s Day', topics: ['Mother\'s Day Gift: Helping Mom Find Her Dream Home', 'Homes with Heart: Properties That Bring Families Together in NJ', 'Family-Focused Neighborhoods in New Jersey', 'Creating Spaces Moms Will Love', 'Celebrating Home and Family This Mother\'s Day']},
+  { date: '2025-06-15', theme: 'Father\'s Day', topics: ['Dad\'s Dream Home: Finding Properties with Workshop Space', 'Father\'s Day: Homes with Garage Space and Man Caves in NJ', 'Family Legacy: Why Homeownership Matters for Fathers', 'Outdoor Spaces Perfect for Dad', 'Investment in Family: Building Wealth Through Real Estate']},
+  { date: '2025-07-04', theme: 'Independence Day', topics: ['Declare Your Independence: First-Time Homebuyer Guide for NJ', 'Freedom of Homeownership: Breaking Free from Renting', 'July 4th: Homes with Outdoor Entertainment Spaces', 'Summer Market: Why July is Hot for NJ Real Estate', 'Celebrating Independence and Homeownership']},
+  { date: '2025-08-23', theme: 'Labor Day', topics: ['Labor Day Market Shift: What NJ Buyers Need to Know', 'Celebrating Hard Work: Your Labor Deserves a Dream Home', 'End of Summer Home Deals', 'September Market Preview: Post-Labor Day Trends', 'Honoring Hard Work Through Homeownership']},
+  { date: '2025-10-18', theme: 'Halloween', topics: ['Spooktacular Homes: Properties with Halloween Charm in NJ', 'Not So Scary: First-Time Homebuyer Myths Debunked', 'Historic Homes with Character in New Jersey', 'Trick or Treat Streets: Family-Friendly Neighborhoods', 'Fall Curb Appeal Tips']},
+  { date: '2025-11-15', theme: 'Thanksgiving', topics: ['Grateful for Home: What We\'re Thankful for This Season', 'Holiday Hosting: Homes Perfect for Thanksgiving', 'November Negotiations: End-of-Year Opportunities', 'Creating Memories in Your New Home', 'Thanksgiving: A Time to Celebrate Home and Family']},
+  { date: '2025-12-13', theme: 'Christmas', topics: ['Home for the Holidays: Christmas in Your New Jersey Home', 'Holiday Home Staging Tips', 'Gift of Home: Why December Can Be Great for Buying', 'Cozy Winter Properties in NJ', 'Celebrating the Season in Your Dream Home']}
 ];
 
-// US Holidays and Celebrations throughout the year
+// US Holidays
 const usHolidays = [
   { date: '01-01', name: 'New Year\'s Day', emoji: '🎉', tip: 'New Year, New Home content - fresh starts and resolutions!' },
-  { date: '01-15', name: 'Martin Luther King Jr. Day', emoji: '✊', tip: 'Community and homeownership - share resources for equal housing opportunities' },
-  { date: '01-20', name: 'National Cheese Lover\'s Day', emoji: '🧀', tip: 'Fun post: "Say cheese! Check out these picture-perfect homes"' },
-  { date: '02-02', name: 'Groundhog Day', emoji: '🦫', tip: 'Will spring market come early? Fun prediction post about housing trends' },
-  { date: '02-14', name: 'Valentine\'s Day', emoji: '💕', tip: 'Fall in love with your dream home - romantic properties or love where you live content' },
-  { date: '02-17', name: 'Random Acts of Kindness Day', emoji: '💝', tip: 'Share how you help clients or spotlight local community initiatives' },
-  { date: '02-28', name: 'National Pancake Day', emoji: '🥞', tip: 'Breakfast nook features or kitchens perfect for Sunday brunch' },
-  { date: '03-08', name: 'International Women\'s Day', emoji: '👩', tip: 'Celebrate women in real estate and women homeowners' },
-  { date: '03-17', name: 'St. Patrick\'s Day', emoji: '🍀', tip: 'Lucky to find your dream home - share recent successes' },
-  { date: '03-20', name: 'First Day of Spring', emoji: '🌸', tip: 'Spring market is here! Perfect time for listings and open houses' },
-  { date: '04-01', name: 'April Fools\' Day', emoji: '🤡', tip: 'No joke - these homes are amazing! Fun, lighthearted content' },
-  { date: '04-07', name: 'World Health Day', emoji: '🏥', tip: 'Healthy homes content - wellness features and access to healthcare' },
-  { date: '04-22', name: 'Earth Day', emoji: '🌍', tip: 'Eco-friendly homes and sustainable living in NJ' },
-  { date: '05-04', name: 'Star Wars Day', emoji: '⭐', tip: 'May the force be with your home search! Fun, pop culture content' },
-  { date: '05-05', name: 'Cinco de Mayo', emoji: '🌮', tip: 'Homes with outdoor entertaining spaces perfect for celebrations' },
-  { date: '05-11', name: 'Mother\'s Day (2nd Sunday)', emoji: '💐', tip: 'Homes that moms will love - family features and spaces' },
-  { date: '05-26', name: 'Memorial Day', emoji: '🇺🇸', tip: 'Honor service members - VA loan info and military family resources' },
-  { date: '06-01', name: 'National Donut Day (1st Friday)', emoji: '🍩', tip: 'Sweet homes just like donuts! Fun morning post' },
-  { date: '06-05', name: 'World Environment Day', emoji: '🌱', tip: 'Green homes and energy efficiency features' },
-  { date: '06-15', name: 'Father\'s Day (3rd Sunday)', emoji: '👨', tip: 'Dad\'s dream spaces - garages, workshops, man caves' },
-  { date: '06-19', name: 'Juneteenth', emoji: '✊🏿', tip: 'Celebrate freedom and Black homeownership legacy' },
-  { date: '06-21', name: 'First Day of Summer', emoji: '☀️', tip: 'Hot summer market - pools, outdoor spaces, vacation vibes' },
-  { date: '07-04', name: 'Independence Day', emoji: '🎆', tip: 'Freedom of homeownership - declare your independence from renting' },
-  { date: '07-30', name: 'International Day of Friendship', emoji: '👥', tip: 'Thank your network and referral partners' },
-  { date: '08-26', name: 'National Dog Day', emoji: '🐕', tip: 'Pet-friendly homes and properties with yards for furry friends' },
-  { date: '09-01', name: 'Labor Day (1st Monday)', emoji: '⚒️', tip: 'Your hard work deserves a dream home - end of summer market shift' },
-  { date: '09-13', name: 'Grandparents Day', emoji: '👵👴', tip: 'Multi-generational homes and in-law suites' },
-  { date: '09-22', name: 'First Day of Fall', emoji: '🍂', tip: 'Fall in love with autumn homes - cozy features and fall colors' },
-  { date: '09-29', name: 'National Coffee Day', emoji: '☕', tip: 'Coffee bars and morning routine spaces in homes' },
-  { date: '10-03', name: 'National Boyfriend Day', emoji: '💑', tip: 'Couples buying their first home together content' },
-  { date: '10-13', name: 'Indigenous Peoples\' Day', emoji: '🪶', tip: 'Honor heritage and historic properties in NJ' },
-  { date: '10-31', name: 'Halloween', emoji: '🎃', tip: 'Spooktacular homes with character! Family-friendly neighborhoods' },
-  { date: '11-11', name: 'Veterans Day', emoji: '🎖️', tip: 'Thank you for your service - VA loan benefits and resources' },
-  { date: '11-27', name: 'Thanksgiving (4th Thursday)', emoji: '🦃', tip: 'Grateful for home - dining spaces perfect for hosting' },
-  { date: '11-28', name: 'Black Friday', emoji: '🛍️', tip: 'Better than Black Friday deals - your dream home awaits!' },
-  { date: '12-01', name: 'Cyber Monday', emoji: '💻', tip: 'Shop for homes from your couch - virtual tours and online listings' },
-  { date: '12-21', name: 'First Day of Winter', emoji: '❄️', tip: 'Cozy winter homes - fireplaces and winter wonderland properties' },
-  { date: '12-24', name: 'Christmas Eve', emoji: '🎄', tip: 'Home for the holidays - festive content and year-end reflections' },
-  { date: '12-25', name: 'Christmas', emoji: '🎅', tip: 'The gift of home - holiday hosting spaces' },
-  { date: '12-31', name: 'New Year\'s Eve', emoji: '🥂', tip: 'Cheers to new beginnings - 2026 real estate goals' }
+  { date: '01-15', name: 'Martin Luther King Jr. Day', emoji: '✊', tip: 'Community and homeownership - equal housing opportunities' },
+  { date: '02-14', name: 'Valentine\'s Day', emoji: '💕', tip: 'Fall in love with your dream home' },
+  { date: '03-17', name: 'St. Patrick\'s Day', emoji: '🍀', tip: 'Lucky to find your dream home' },
+  { date: '04-22', name: 'Earth Day', emoji: '🌍', tip: 'Eco-friendly homes and sustainable living' },
+  { date: '05-11', name: 'Mother\'s Day', emoji: '💐', tip: 'Homes that moms will love' },
+  { date: '05-26', name: 'Memorial Day', emoji: '🇺🇸', tip: 'VA loan info and military resources' },
+  { date: '06-15', name: 'Father\'s Day', emoji: '👨', tip: 'Dad\'s dream spaces - garages, workshops' },
+  { date: '07-04', name: 'Independence Day', emoji: '🎆', tip: 'Freedom of homeownership' },
+  { date: '09-01', name: 'Labor Day', emoji: '⚒️', tip: 'End of summer market shift' },
+  { date: '10-31', name: 'Halloween', emoji: '🎃', tip: 'Family-friendly neighborhoods' },
+  { date: '11-11', name: 'Veterans Day', emoji: '🎖️', tip: 'VA loan benefits and resources' },
+  { date: '11-27', name: 'Thanksgiving', emoji: '🦃', tip: 'Dining spaces perfect for hosting' },
+  { date: '12-25', name: 'Christmas', emoji: '🎅', tip: 'Holiday hosting spaces' }
 ];
 
-// Track sent tasks to prevent duplicates
 let lastBiweeklyTaskDate = null;
 let lastSocialMediaDate = null;
-let lastYearlyThemeDate = null;
 
-// Website monitoring
 const WEBSITE_URL = 'https://thegroomesrealtygroup.kw.com/';
 let previousWebsiteState = {
   blogs: [],
   listings: [],
-  pages: [],
-  vendors: [],
-  reviews: [],
-  openHouses: [],
-  listingStatuses: {} // Track status of each listing (active, under contract, sold, etc)
+  listingStatuses: {}
 };
 
-// Function to check website for updates
-async function checkWebsiteUpdates(client) {
-  try {
-    const guild = client.guilds.cache.first();
-    if (!guild) return;
-    
-    const channel = guild.channels.cache.find(ch => ch.name === 'website🌍');
-    if (!channel) return;
-    
-    // Fetch website content
-    const response = await fetch(WEBSITE_URL);
-    const html = await response.text();
-    
-    // Parse current state
-    const currentBlogs = [];
-    const currentListings = [];
-    const currentVendors = [];
-    const currentReviews = [];
-    const currentOpenHouses = [];
-    const currentListingStatuses = {};
-    
-    // Extract blog links
-    const blogMatches = html.matchAll(/href="([^"]*\/blog\/[^"]*)"/g);
-    for (const match of blogMatches) {
-      currentBlogs.push(match[1]);
-    }
-    
-    // Extract listing links and their statuses
-    const listingMatches = html.matchAll(/href="([^"]*\/listing\/[^"]*)"[^>]*>[\s\S]*?<[^>]*class="[^"]*status[^"]*"[^>]*>(.*?)<\/[^>]*>/gi);
-    for (const match of listingMatches) {
-      const url = match[1];
-      const status = match[2] ? match[2].trim().toLowerCase() : 'active';
-      currentListings.push(url);
-      currentListingStatuses[url] = status;
-    }
-    
-    // Also catch listings without explicit status tags
-    const simpleListingMatches = html.matchAll(/href="([^"]*\/listing\/[^"]*)"/g);
-    for (const match of simpleListingMatches) {
-      if (!currentListings.includes(match[1])) {
-        currentListings.push(match[1]);
-        // Check if status keywords are near the link
-        const contextStart = Math.max(0, match.index - 200);
-        const contextEnd = Math.min(html.length, match.index + 200);
-        const context = html.substring(contextStart, contextEnd).toLowerCase();
-        
-        if (context.includes('under contract') || context.includes('pending')) {
-          currentListingStatuses[match[1]] = 'under contract';
-        } else if (context.includes('sold')) {
-          currentListingStatuses[match[1]] = 'sold';
-        } else if (context.includes('rented')) {
-          currentListingStatuses[match[1]] = 'rented';
-        } else if (context.includes('for rent')) {
-          currentListingStatuses[match[1]] = 'for rent';
-        } else {
-          currentListingStatuses[match[1]] = 'active';
-        }
-      }
-    }
-    
-    // Extract vendors from "Handpicked Local Experts" or similar sections
-    const vendorMatches = html.matchAll(/class="[^"]*vendor[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi);
-    for (const match of vendorMatches) {
-      const vendorName = match[2].replace(/<[^>]*>/g, '').trim();
-      currentVendors.push(vendorName);
-    }
-    
-    // Also look for expert/professional sections
-    const expertMatches = html.matchAll(/class="[^"]*expert[^"]*"[^>]*>[\s\S]*?<[^>]*>(.*?)<\/[^>]*>/gi);
-    for (const match of expertMatches) {
-      const expertName = match[1].replace(/<[^>]*>/g, '').trim();
-      if (expertName.length > 2 && expertName.length < 100) {
-        currentVendors.push(expertName);
-      }
-    }
-    
-    // Extract reviews from "Client Success Stories" or testimonials
-    const reviewMatches = html.matchAll(/class="[^"]*(review|testimonial|success)[^"]*"[^>]*>[\s\S]*?<[^>]*>(.*?)<\/[^>]*>/gi);
-    for (const match of reviewMatches) {
-      const reviewText = match[2].replace(/<[^>]*>/g, '').trim().substring(0, 100);
-      if (reviewText.length > 10) {
-        currentReviews.push(reviewText);
-      }
-    }
-    
-    // Extract open houses
-    const openHouseMatches = html.matchAll(/href="([^"]*open[_-]?house[^"]*)"/gi);
-    for (const match of openHouseMatches) {
-      currentOpenHouses.push(match[1]);
-    }
-    
-    // Also look for open house events in calendar or event sections
-    const eventMatches = html.matchAll(/class="[^"]*event[^"]*"[^>]*>[\s\S]*?open\s*house[\s\S]*?href="([^"]*)"/gi);
-    for (const match of eventMatches) {
-      if (!currentOpenHouses.includes(match[1])) {
-        currentOpenHouses.push(match[1]);
-      }
-    }
-    
-    // Check for NEW BLOGS
-    for (const blog of currentBlogs) {
-      if (!previousWebsiteState.blogs.includes(blog)) {
-        const fullUrl = blog.startsWith('http') ? blog : `${WEBSITE_URL}${blog.replace(/^\//, '')}`;
-        await channel.send(`📝 **New blog has been added to your website!**\n${fullUrl}`);
-        console.log(`📝 New blog detected: ${fullUrl}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    // Check for NEW LISTINGS
-    for (const listing of currentListings) {
-      if (!previousWebsiteState.listings.includes(listing)) {
-        const fullUrl = listing.startsWith('http') ? listing : `${WEBSITE_URL}${listing.replace(/^\//, '')}`;
-        const status = currentListingStatuses[listing];
-        await channel.send(`🏡 **New listing has been added to your website!**\nStatus: ${status}\n${fullUrl}`);
-        console.log(`🏡 New listing detected: ${fullUrl}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    // Check for LISTING STATUS CHANGES
-    for (const listing of currentListings) {
-      const oldStatus = previousWebsiteState.listingStatuses[listing];
-      const newStatus = currentListingStatuses[listing];
-      
-      if (oldStatus && oldStatus !== newStatus) {
-        const fullUrl = listing.startsWith('http') ? listing : `${WEBSITE_URL}${listing.replace(/^\//, '')}`;
-        let emoji = '🏠';
-        let message = '';
-        
-        if (newStatus.includes('under contract') || newStatus.includes('pending')) {
-          emoji = '🎊';
-          message = `${emoji} **Your listing is now Under Contract!**\n${fullUrl}`;
-        } else if (newStatus.includes('sold')) {
-          emoji = '🎉';
-          message = `${emoji} **Congratulations! Your listing has been Sold!**\n${fullUrl}`;
-        } else if (newStatus.includes('rented')) {
-          emoji = '🔑';
-          message = `${emoji} **Your listing has been Rented!**\n${fullUrl}`;
-        } else if (newStatus.includes('for rent')) {
-          emoji = '🏘️';
-          message = `${emoji} **Your listing is now available For Rent!**\n${fullUrl}`;
-        } else if (newStatus === 'active' && oldStatus !== 'active') {
-          emoji = '✨';
-          message = `${emoji} **Your listing is now Active again!**\n${fullUrl}`;
-        } else {
-          message = `🏠 **Listing status updated:** ${oldStatus} → ${newStatus}\n${fullUrl}`;
-        }
-        
-        await channel.send(message);
-        console.log(`📊 Status change: ${listing} - ${oldStatus} → ${newStatus}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    // Check for NEW VENDORS
-    for (const vendor of currentVendors) {
-      if (!previousWebsiteState.vendors.includes(vendor)) {
-        await channel.send(`👥 **New vendor added to Handpicked Local Experts:**\n${vendor}`);
-        console.log(`👥 New vendor: ${vendor}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    // Check for REMOVED VENDORS
-    for (const vendor of previousWebsiteState.vendors) {
-      if (!currentVendors.includes(vendor)) {
-        await channel.send(`👋 **Vendor removed from Handpicked Local Experts:**\n${vendor}`);
-        console.log(`👋 Removed vendor: ${vendor}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    // Check for NEW REVIEWS
-    for (const review of currentReviews) {
-      if (!previousWebsiteState.reviews.includes(review)) {
-        await channel.send(`⭐ **New review added to Client Success Stories!**\n"${review}..."\nCheck your website for the full review!`);
-        console.log(`⭐ New review detected`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    // Check for NEW OPEN HOUSES
-    for (const openHouse of currentOpenHouses) {
-      if (!previousWebsiteState.openHouses.includes(openHouse)) {
-        const fullUrl = openHouse.startsWith('http') ? openHouse : `${WEBSITE_URL}${openHouse.replace(/^\//, '')}`;
-        await channel.send(`🏠✨ **Open House is being hosted!**\nCheck the details here: ${fullUrl}`);
-        console.log(`🏠 New open house: ${fullUrl}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    // Update the state
-    previousWebsiteState.blogs = currentBlogs;
-    previousWebsiteState.listings = currentListings;
-    previousWebsiteState.vendors = currentVendors;
-    previousWebsiteState.reviews = currentReviews;
-    previousWebsiteState.openHouses = currentOpenHouses;
-    previousWebsiteState.listingStatuses = currentListingStatuses;
-    
-  } catch (error) {
-    console.error('Error checking website updates:', error);
-  }
-}
-
-// Function to send messages with delay
-async function manualWebsiteCheck(client, channel) {
-  try {
-    await channel.send('🔍 Checking the website for updates...');
-    
-    const response = await fetch(WEBSITE_URL);
-    const html = await response.text();
-    
-    const blogs = [];
-    const listings = [];
-    
-    const blogMatches = html.matchAll(/href="([^"]*\/blog\/[^"]*)"/g);
-    for (const match of blogMatches) {
-      blogs.push(match[1]);
-    }
-    
-    const listingMatches = html.matchAll(/href="([^"]*\/listing\/[^"]*)"/g);
-    for (const match of listingMatches) {
-      listings.push(match[1]);
-    }
-    
-    await channel.send(`✅ Website check complete!\n📝 Found ${blogs.length} blog posts\n🏡 Found ${listings.length} listings\n\nI'm now monitoring for any changes! 💜`);
-    
-    // Initialize state if first time
-    if (previousWebsiteState.blogs.length === 0) {
-      previousWebsiteState.blogs = blogs;
-      previousWebsiteState.listings = listings;
-    }
-    
-  } catch (error) {
-    await channel.send('❌ Sorry, I had trouble checking the website. Please try again later.');
-    console.error('Error in manual website check:', error);
-  }
-}
 async function sendMessagesWithDelay(channel, messages, delay = 3000) {
   for (const message of messages) {
     await channel.send(message);
@@ -606,16 +184,12 @@ async function sendMessagesWithDelay(channel, messages, delay = 3000) {
   }
 }
 
-// Function to get newsletter theme for a specific date
 function getNewsletterTheme(targetDate) {
   const target = new Date(targetDate);
-  const themes = newsletterThemes2025;
-  
-  // Find the closest theme before or on the target date
   let closestTheme = null;
   let smallestDiff = Infinity;
   
-  for (const theme of themes) {
+  for (const theme of newsletterThemes2025) {
     const themeDate = new Date(theme.date);
     const diff = target - themeDate;
     
@@ -625,10 +199,9 @@ function getNewsletterTheme(targetDate) {
     }
   }
   
-  return closestTheme || themes[0];
+  return closestTheme || newsletterThemes2025[0];
 }
 
-// Function to send newsletter reminder
 async function sendNewsletterReminder(client, newsletterDate) {
   try {
     const guild = client.guilds.cache.first();
@@ -646,20 +219,19 @@ async function sendNewsletterReminder(client, newsletterDate) {
       
       const messages = [
         `Hi Jeraaa! 📬`,
-        `Just a heads up — your next newsletter is scheduled for **${formattedDate}**.`,
-        `The theme for this one is: **${theme.theme}** 🎨`,
+        `Your next newsletter is scheduled for **${formattedDate}**.`,
+        `Theme: **${theme.theme}** 🎨`,
         ``,
-        `Here are 5 article topic suggestions you can use:`,
+        `Here are 5 article topic suggestions:`,
         `1. ${theme.topics[0]}`,
         `2. ${theme.topics[1]}`,
         `3. ${theme.topics[2]}`,
         `4. ${theme.topics[3]}`,
         `5. ${theme.topics[4]}`,
         ``,
-        `Remember, if you have active listings, prioritize those! Otherwise, these topics should work great. You've got this! 💜`
+        `You've got this! 💜`
       ];
       
-      console.log(`📬 Sending newsletter reminder for ${formattedDate}...`);
       await sendMessagesWithDelay(channel, messages, 2000);
     }
   } catch (error) {
@@ -667,15 +239,12 @@ async function sendNewsletterReminder(client, newsletterDate) {
   }
 }
 
-// Function to send social media suggestions
 async function sendSocialMediaSuggestions(client) {
   try {
     const now = new Date();
     const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
     
-    if (lastSocialMediaDate === dateKey) {
-      return; // Already sent today
-    }
+    if (lastSocialMediaDate === dateKey) return;
     
     const guild = client.guilds.cache.first();
     if (!guild) return;
@@ -683,42 +252,27 @@ async function sendSocialMediaSuggestions(client) {
     const channel = guild.channels.cache.find(ch => ch.name === 'socmed-posts📰');
     
     if (channel) {
-      // Get current theme if any
-      const theme = getNewsletterTheme(now);
-      const isThemeWeek = Math.abs(new Date(theme.date) - now) < 7 * 24 * 60 * 60 * 1000;
-      
-      let topics = [
-        'Spotlight a trending NJ neighborhood and what makes it special',
-        'Share a home maintenance tip for the current season',
-        'Post about current mortgage rates and what they mean for buyers',
-        'Highlight a local NJ business or community event',
-        'Share before/after staging photos (if available)',
-        'Quick tip about home value: what adds value vs what doesn\'t',
-        'Feature a property type (condos, townhouses, single-family)',
-        'Share a client testimonial or success story',
-        'Post about hidden costs of homeownership people should know',
-        'Fun fact about New Jersey real estate or local history'
+      const topics = [
+        'Spotlight a trending NJ neighborhood',
+        'Share a home maintenance tip',
+        'Post about current mortgage rates',
+        'Highlight a local NJ business',
+        'Share staging tips',
+        'Feature a property type',
+        'Post a client testimonial',
+        'Share hidden costs of homeownership',
+        'Fun fact about NJ real estate'
       ];
-      
-      if (isThemeWeek) {
-        topics = [
-          `Create a post connecting ${theme.theme} to homeownership`,
-          'Share why this time of year is great for buying/selling in NJ',
-          ...topics.slice(2, 9),
-          `Behind-the-scenes of preparing for ${theme.theme}`
-        ];
-      }
       
       const messages = [
         `Hi Jeraaa! 📰`,
-        `Here's your social media content suggestions for the next two weeks. Pick what resonates with you:`,
+        `Here's your social media content suggestions:`,
         ``,
         ...topics.map((topic, i) => `${i + 1}. ${topic}`),
         ``,
-        `Mix and match these however you like. You're doing amazing work! 💜`
+        `You're doing amazing! 💜`
       ];
       
-      console.log('📱 Sending social media suggestions...');
       await sendMessagesWithDelay(channel, messages, 2000);
       lastSocialMediaDate = dateKey;
     }
@@ -727,66 +281,6 @@ async function sendSocialMediaSuggestions(client) {
   }
 }
 
-// Function to send holiday reminders
-async function sendHolidayReminder(client, holiday) {
-  try {
-    const guild = client.guilds.cache.first();
-    if (!guild) return;
-    
-    const channel = guild.channels.cache.find(ch => ch.name === 'holidays🎉');
-    
-    if (channel) {
-      const messages = [
-        `Hi Jeraaa! ${holiday.emoji}`,
-        `**${holiday.name}** is coming up soon!`,
-        ``,
-        `💡 Content idea: ${holiday.tip}`,
-        ``,
-        `This could be a great opportunity for social media or newsletter content! 💜`
-      ];
-      
-      console.log(`🎉 Sending holiday reminder: ${holiday.name}`);
-      await sendMessagesWithDelay(channel, messages, 2000);
-    }
-  } catch (error) {
-    console.error('Error sending holiday reminder:', error);
-  }
-}
-
-// Function to check for upcoming holidays
-async function checkUpcomingHolidays(client) {
-  try {
-    const now = new Date();
-    const threeDaysLater = new Date(now);
-    threeDaysLater.setDate(now.getDate() + 3);
-    
-    const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const threeDaysStr = `${String(threeDaysLater.getMonth() + 1).padStart(2, '0')}-${String(threeDaysLater.getDate()).padStart(2, '0')}`;
-    
-    for (const holiday of usHolidays) {
-      // Check if holiday is in 3 days
-      if (holiday.date === threeDaysStr) {
-        await sendHolidayReminder(client, holiday);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      
-      // Also send on the actual day for major holidays
-      const majorHolidays = ['New Year\'s Day', 'Valentine\'s Day', 'St. Patrick\'s Day', 'Independence Day', 
-                             'Halloween', 'Thanksgiving', 'Christmas', 'Mother\'s Day', 'Father\'s Day'];
-      
-      if (holiday.date === todayStr && majorHolidays.includes(holiday.name)) {
-        const guild = client.guilds.cache.first();
-        const channel = guild?.channels.cache.find(ch => ch.name === 'holidays🎉');
-        
-        if (channel) {
-          await channel.send(`${holiday.emoji} **Happy ${holiday.name}!** ${holiday.emoji}\n\nHope you're having a wonderful day, Jeraaa! 💜`);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error checking holidays:', error);
-  }
-}
 async function sendEmailCampaignSuggestions(client) {
   try {
     const guild = client.guilds.cache.first();
@@ -795,35 +289,23 @@ async function sendEmailCampaignSuggestions(client) {
     const channel = guild.channels.cache.find(ch => ch.name === 'emails💌');
     
     if (channel) {
-      const now = new Date();
-      const month = now.toLocaleDateString('en-US', { month: 'long' });
-      
       const messages = [
         `Hi Jeraaa! 💌`,
-        `Here are some professional email campaign topics for this period:`,
+        `Email campaign topics for this period:`,
         ``,
-        `**For Active Listings:**`,
-        `• New listing announcement with full property details and virtual tour link`,
-        `• Price adjustment alert (if applicable)`,
-        `• Open house invitation with RSVP tracking`,
-        `• Just sold announcement with success story`,
+        `**Active Listings:**`,
+        `• New listing announcements`,
+        `• Open house invitations`,
+        `• Price updates`,
         ``,
-        `**Monthly Neighborhood Update:**`,
-        `• ${month} market stats for [specific NJ neighborhoods]`,
-        `• Recent sales and how they compare to list price`,
-        `• Average days on market trends`,
-        `• Neighborhood spotlight: upcoming developments or improvements`,
+        `**Market Updates:**`,
+        `• Monthly NJ market stats`,
+        `• Mortgage rate trends`,
+        `• Seasonal insights`,
         ``,
-        `**Biweekly Trends:**`,
-        `• Current mortgage rate trends and buyer opportunities`,
-        `• Inventory levels: what's available in different price ranges`,
-        `• Seasonal market insights for New Jersey`,
-        `• Tips for buyers/sellers in the current market`,
-        ``,
-        `Keep it professional and focused on providing value. You've got this! 💜`
+        `You've got this! 💜`
       ];
       
-      console.log('📧 Sending email campaign suggestions...');
       await sendMessagesWithDelay(channel, messages, 2000);
     }
   } catch (error) {
@@ -831,65 +313,117 @@ async function sendEmailCampaignSuggestions(client) {
   }
 }
 
-// Function to send yearly newsletter themes
-async function sendYearlyThemes(client, year) {
+async function checkWebsiteUpdates(client) {
   try {
     const guild = client.guilds.cache.first();
     if (!guild) return;
     
-    const channel = guild.channels.cache.find(ch => ch.name === 'newsletters📬');
+    const channel = guild.channels.cache.find(ch => ch.name === 'website🌍');
+    if (!channel) return;
     
-    if (channel) {
-      const messages = [
-        `Hi Jeraaa! 🎊`,
-        `The year is almost ending! Here's your newsletter theme calendar for ${year}:`,
-        ``
-      ];
-      
-      // Add each theme with its date
-      newsletterThemes2025.forEach(theme => {
-        const themeDate = new Date(theme.date);
-        themeDate.setFullYear(year);
-        const formatted = themeDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        messages.push(`📅 **${formatted}** — ${theme.theme}`);
-      });
-      
-      messages.push(``);
-      messages.push(`I'll remind you 5 days before each newsletter is due. You're going to do great! 💜`);
-      
-      console.log(`📅 Sending ${year} newsletter themes...`);
-      await sendMessagesWithDelay(channel, messages, 1000);
+    const response = await fetch(WEBSITE_URL);
+    const html = await response.text();
+    
+    const currentBlogs = [];
+    const currentListings = [];
+    const currentListingStatuses = {};
+    
+    const blogMatches = html.matchAll(/href="([^"]*\/blog\/[^"]*)"/g);
+    for (const match of blogMatches) {
+      currentBlogs.push(match[1]);
     }
+    
+    const listingMatches = html.matchAll(/href="([^"]*\/listing\/[^"]*)"/g);
+    for (const match of listingMatches) {
+      currentListings.push(match[1]);
+      currentListingStatuses[match[1]] = 'active';
+    }
+    
+    for (const blog of currentBlogs) {
+      if (!previousWebsiteState.blogs.includes(blog)) {
+        const fullUrl = blog.startsWith('http') ? blog : `${WEBSITE_URL}${blog.replace(/^\//, '')}`;
+        await channel.send(`📝 **New blog added!**\n${fullUrl}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    for (const listing of currentListings) {
+      if (!previousWebsiteState.listings.includes(listing)) {
+        const fullUrl = listing.startsWith('http') ? listing : `${WEBSITE_URL}${listing.replace(/^\//, '')}`;
+        await channel.send(`🏡 **New listing added!**\n${fullUrl}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    previousWebsiteState.blogs = currentBlogs;
+    previousWebsiteState.listings = currentListings;
+    previousWebsiteState.listingStatuses = currentListingStatuses;
+    
   } catch (error) {
-    console.error('Error sending yearly themes:', error);
+    console.error('Error checking website:', error);
   }
 }
 
-// Function to get days until next deadline
+async function manualWebsiteCheck(client, channel) {
+  try {
+    await channel.send('🔍 Checking the website...');
+    await checkWebsiteUpdates(client);
+    await channel.send('✅ Website check complete! 💜');
+  } catch (error) {
+    await channel.send('❌ Sorry, I had trouble checking the website.');
+    console.error('Error in manual check:', error);
+  }
+}
+
+async function checkUpcomingHolidays(client) {
+  try {
+    const now = new Date();
+    const threeDaysLater = new Date(now);
+    threeDaysLater.setDate(now.getDate() + 3);
+    
+    const threeDaysStr = `${String(threeDaysLater.getMonth() + 1).padStart(2, '0')}-${String(threeDaysLater.getDate()).padStart(2, '0')}`;
+    
+    for (const holiday of usHolidays) {
+      if (holiday.date === threeDaysStr) {
+        const guild = client.guilds.cache.first();
+        const channel = guild?.channels.cache.find(ch => ch.name === 'holidays🎉');
+        
+        if (channel) {
+          const messages = [
+            `Hi Jeraaa! ${holiday.emoji}`,
+            `**${holiday.name}** is coming up!`,
+            ``,
+            `💡 ${holiday.tip}`,
+            ``,
+            `Great opportunity for content! 💜`
+          ];
+          await sendMessagesWithDelay(channel, messages, 2000);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking holidays:', error);
+  }
+}
+
 function getDaysUntilDeadline() {
   const now = new Date();
   const currentDay = now.getDate();
   
-  let nextDeadline;
   if (currentDay < 16) {
-    nextDeadline = 16;
+    return 16 - currentDay;
   } else {
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     return Math.ceil((nextMonth - now) / (1000 * 60 * 60 * 24));
   }
-  
-  return nextDeadline - currentDay;
 }
 
-// Function to send biweekly tasks (only on 1st and 16th)
 async function sendBiweeklyTasks(client) {
   try {
     const now = new Date();
     const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
     
-    if (lastBiweeklyTaskDate === dateKey) {
-      return; // Already sent today
-    }
+    if (lastBiweeklyTaskDate === dateKey) return;
     
     const guild = client.guilds.cache.first();
     if (!guild) return;
@@ -900,7 +434,6 @@ async function sendBiweeklyTasks(client) {
     );
     
     if (channel) {
-      console.log('📋 Sending biweekly tasks...');
       await sendMessagesWithDelay(channel, biweeklyTasks, 3000);
       lastBiweeklyTaskDate = dateKey;
     }
@@ -909,7 +442,6 @@ async function sendBiweeklyTasks(client) {
   }
 }
 
-// Function to send random check-in
 async function sendCheckIn(client) {
   try {
     const guild = client.guilds.cache.first();
@@ -923,10 +455,9 @@ async function sendCheckIn(client) {
       
       const messagesWithDeadline = [
         ...randomMessages,
-        `⏰ You have **${daysLeft} days** left in this cycle. You're doing great! 💜`
+        `⏰ You have **${daysLeft} days** left. You're doing great! 💜`
       ];
       
-      console.log('💬 Sending check-in message to main chat...');
       await sendMessagesWithDelay(channel, messagesWithDeadline, 2000);
     }
   } catch (error) {
@@ -934,50 +465,35 @@ async function sendCheckIn(client) {
   }
 }
 
-// Main scheduler - checks every hour
 function scheduleAllTasks(client) {
   setInterval(async () => {
     const now = new Date();
     const day = now.getDate();
     const hour = now.getHours();
-    const month = now.getMonth();
-    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
     
-    // Biweekly tasks: 1st and 16th at 8 AM
     if ((day === 1 || day === 16) && hour === 8) {
       await sendBiweeklyTasks(client);
       await sendEmailCampaignSuggestions(client);
     }
     
-    // Social media suggestions: every 2 weeks (1st and 16th at 9 AM)
     if ((day === 1 || day === 16) && hour === 9) {
       await sendSocialMediaSuggestions(client);
     }
     
-    // Website monitoring: every 2 hours
     if (hour % 2 === 0) {
       await checkWebsiteUpdates(client);
     }
     
-    // Holiday reminders: check daily at 9 AM
     if (hour === 9) {
       await checkUpcomingHolidays(client);
     }
     
-    // Newsletter reminders: 5 days before each scheduled send
-    // Check if we're 5 days before any newsletter date
     const checkDate = new Date(now);
     checkDate.setDate(checkDate.getDate() + 5);
     
     const upcomingNewsletters = [
       '2025-11-17', '2025-12-01', '2025-12-15', '2025-12-29',
-      '2026-01-12', '2026-01-26', '2026-02-09', '2026-02-23',
-      '2026-03-09', '2026-03-23', '2026-04-06', '2026-04-20',
-      '2026-05-04', '2026-05-18', '2026-06-01', '2026-06-15',
-      '2026-06-29', '2026-07-13', '2026-07-27', '2026-08-10',
-      '2026-08-24', '2026-09-07', '2026-09-21', '2026-10-05',
-      '2026-10-19', '2026-11-02', '2026-11-16', '2026-11-30',
-      '2026-12-14', '2026-12-28'
+      '2026-01-12', '2026-01-26', '2026-02-09', '2026-02-23'
     ];
     
     for (const newsletterDate of upcomingNewsletters) {
@@ -987,67 +503,142 @@ function scheduleAllTasks(client) {
       }
     }
     
-    // Yearly theme list: Last Monday of December at 10 AM
-    if (month === 11 && dayOfWeek === 1 && hour === 10) { // December = month 11
-      const lastMonday = new Date(now.getFullYear(), 11, 31);
-      while (lastMonday.getDay() !== 1) {
-        lastMonday.setDate(lastMonday.getDate() - 1);
-      }
-      
-      const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-      if (now.getDate() === lastMonday.getDate() && lastYearlyThemeDate !== dateKey) {
-        await sendYearlyThemes(client, now.getFullYear() + 1);
-        lastYearlyThemeDate = dateKey;
-      }
-    }
-    
-  }, 3600000); // Check every hour
+  }, 3600000);
 }
 
-// Function to schedule random check-ins (every 3-5 days)
 function scheduleRandomCheckIns(client) {
-  function scheduleNextCheckIn() {
-    const daysUntilNext = Math.floor(Math.random() * 3) + 3;
-    const hoursUntilNext = Math.floor(Math.random() * 12) + 9;
-    const minutesUntilNext = Math.floor(Math.random() * 60);
+  function scheduleNext() {
+    const days = Math.floor(Math.random() * 3) + 3;
+    const hours = Math.floor(Math.random() * 12) + 9;
+    const ms = (days * 24 * 60 * 60 * 1000) + (hours * 60 * 60 * 1000);
     
-    const msUntilNext = (daysUntilNext * 24 * 60 * 60 * 1000) + 
-                        (hoursUntilNext * 60 * 60 * 1000) + 
-                        (minutesUntilNext * 60 * 1000);
-    
-    console.log(`💭 Next check-in scheduled in ${daysUntilNext} days, ${hoursUntilNext} hours, ${minutesUntilNext} minutes`);
+    console.log(`💭 Next check-in in ${days} days, ${hours} hours`);
     
     setTimeout(() => {
       sendCheckIn(client);
-      scheduleNextCheckIn();
-    }, msUntilNext);
+      scheduleNext();
+    }, ms);
   }
   
-  scheduleNextCheckIn();
+  scheduleNext();
 }
 
-client.on('ready', () => {
+client.on('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}!`);
   console.log('🤖 Fri 💜 is ready to help Jeraaa!');
   
-  // Start the main scheduler
+  const commands = [
+    { name: 'tasks', description: 'Show your biweekly tasks' },
+    { name: 'checkin', description: 'Get a motivational check-in' },
+    { name: 'newsletter', description: 'Get newsletter topics' },
+    { name: 'social', description: 'Get social media ideas' },
+    { name: 'email', description: 'Get email campaign ideas' },
+    { name: 'website', description: 'Check website updates' },
+    { name: 'holidays', description: 'Show upcoming holidays' }
+  ];
+  
+  try {
+    const guild = client.guilds.cache.first();
+    if (guild) {
+      await guild.commands.set(commands);
+      console.log('✅ Slash commands registered!');
+    }
+  } catch (error) {
+    console.error('Error registering commands:', error);
+  }
+  
   scheduleAllTasks(client);
-  
-  // Schedule random check-ins every 3-5 days
   scheduleRandomCheckIns(client);
-  
-  // Check immediately if we should send anything right now
-  const now = new Date();
-  const day = now.getDate();
-  const hour = now.getHours();
-  
-  // If it's the 16th and between 8-11 AM, send tasks now
-  if (day === 16 && hour >= 8 && hour <= 11) {
-    setTimeout(() => {
-      sendBiweeklyTasks(client);
-      sendSocialMediaSuggestions(client);
-      sendEmailCampaignSuggestions(client);
-    }, 5000);
+});
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isCommand()) return;
+
+  try {
+    await interaction.deferReply();
+
+    if (interaction.commandName === 'tasks') {
+      await sendMessagesWithDelay(interaction.channel, biweeklyTasks, 3000);
+      await interaction.editReply('✅ Tasks posted above! 💜');
+    }
+    
+    else if (interaction.commandName === 'checkin') {
+      const daysLeft = getDaysUntilDeadline();
+      const randomMessages = checkInMessages[Math.floor(Math.random() * checkInMessages.length)];
+      const messagesWithDeadline = [
+        ...randomMessages,
+        `⏰ **${daysLeft} days** left. You're doing great! 💜`
+      ];
+      await sendMessagesWithDelay(interaction.channel, messagesWithDeadline, 2000);
+      await interaction.editReply('✅ Check-in sent! 💜');
+    }
+    
+    else if (interaction.commandName === 'newsletter') {
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + 5);
+      await sendNewsletterReminder(client, nextDate.toISOString().split('T')[0]);
+      await interaction.editReply('✅ Newsletter topics sent! 📬');
+    }
+    
+    else if (interaction.commandName === 'social') {
+      await sendSocialMediaSuggestions(client);
+      await interaction.editReply('✅ Social media ideas sent! 📱');
+    }
+    
+    else if (interaction.commandName === 'email') {
+      await sendEmailCampaignSuggestions(client);
+      await interaction.editReply('✅ Email ideas sent! 💌');
+    }
+    
+    else if (interaction.commandName === 'website') {
+      await manualWebsiteCheck(client, interaction.channel);
+      await interaction.editReply('✅ Website check done! 🌍');
+    }
+    
+    else if (interaction.commandName === 'holidays') {
+      const now = new Date();
+      const upcoming = [];
+      
+      for (const holiday of usHolidays) {
+        const [month, day] = holiday.date.split('-').map(Number);
+        const holidayDate = new Date(now.getFullYear(), month - 1, day);
+        
+        if (holidayDate < now) {
+          holidayDate.setFullYear(now.getFullYear() + 1);
+        }
+        
+        const daysUntil = Math.ceil((holidayDate - now) / (1000 * 60 * 60 * 24));
+        
+        if (daysUntil <= 30) {
+          upcoming.push({ ...holiday, daysUntil, fullDate: holidayDate });
+        }
+      }
+      
+      upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
+      
+      const messages = [
+        'Hi Jeraaa! 🎉 Upcoming holidays:',
+        ''
+      ];
+      
+      upcoming.forEach(h => {
+        const dateStr = h.fullDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        messages.push(`${h.emoji} **${h.name}** - ${dateStr} (${h.daysUntil} days)`);
+        messages.push(`   💡 ${h.tip}`);
+        messages.push('');
+      });
+      
+      if (upcoming.length === 0) {
+        messages.push('No holidays in the next 30 days! 💜');
+      }
+      
+      await sendMessagesWithDelay(interaction.channel, messages, 1500);
+      await interaction.editReply('✅ Holiday calendar sent! 🎉');
+    }
+    
+  } catch (error) {
+    console.error('Error handling command:', error);
+    await interaction.editReply('❌ Something went wrong!');
   }
 });
 
@@ -1056,25 +647,22 @@ client.on('messageCreate', async (message) => {
 
   const content = message.content.toLowerCase();
 
-  // Manual trigger for biweekly tasks
   if (content.includes('biweekly tasks') || content.includes('my tasks')) {
     await sendMessagesWithDelay(message.channel, biweeklyTasks, 3000);
     return;
   }
   
-  // Manual check-in trigger
   if (content.includes('check in') || content.includes('how am i doing')) {
     const daysLeft = getDaysUntilDeadline();
     const randomMessages = checkInMessages[Math.floor(Math.random() * checkInMessages.length)];
     const messagesWithDeadline = [
       ...randomMessages,
-      `⏰ You have **${daysLeft} days** left in this cycle. You're doing great! 💜`
+      `⏰ **${daysLeft} days** left. You're doing great! 💜`
     ];
     await sendMessagesWithDelay(message.channel, messagesWithDeadline, 2000);
     return;
   }
   
-  // Manual newsletter topics trigger
   if (content.includes('newsletter topics') || content.includes('newsletter ideas')) {
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + 5);
@@ -1082,25 +670,21 @@ client.on('messageCreate', async (message) => {
     return;
   }
   
-  // Manual social media trigger
   if (content.includes('social media ideas') || content.includes('post ideas')) {
     await sendSocialMediaSuggestions(client);
     return;
   }
   
-  // Manual email campaign trigger
   if (content.includes('email ideas') || content.includes('campaign ideas')) {
     await sendEmailCampaignSuggestions(client);
     return;
   }
   
-  // Manual website check trigger
   if (content.includes('check website') || content.includes('website updates')) {
     await manualWebsiteCheck(client, message.channel);
     return;
   }
   
-  // Show upcoming holidays
   if (content.includes('upcoming holidays') || content.includes('next holidays')) {
     const now = new Date();
     const upcoming = [];
@@ -1123,7 +707,7 @@ client.on('messageCreate', async (message) => {
     upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
     
     const messages = [
-      'Hi Jeraaa! 🎉 Here are the upcoming holidays in the next 30 days:',
+      'Hi Jeraaa! 🎉 Upcoming holidays:',
       ''
     ];
     
@@ -1135,14 +719,13 @@ client.on('messageCreate', async (message) => {
     });
     
     if (upcoming.length === 0) {
-      messages.push('No major holidays in the next 30 days, but I\'ll keep you posted! 💜');
+      messages.push('No holidays in the next 30 days! 💜');
     }
     
     await sendMessagesWithDelay(message.channel, messages, 1500);
     return;
   }
 
-  // Check for original real estate trigger words
   for (const [trigger, tasks] of Object.entries(taskLists)) {
     if (content.includes(trigger)) {
       const personalizedTasks = tasks.map(task => 
