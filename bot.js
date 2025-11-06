@@ -74,23 +74,22 @@ const taskLists = {
 
 // Your biweekly personal tasks
 const biweeklyTasks = [
-  "💜 Hi there! It's time for your biweekly tasks. I'm here with you, let's tackle these together! 🌟",
-  "📰 **Newsletters** — Take your time with this one. Your words matter and people appreciate your updates!",
-  "📧 **Email Campaigns** — Home Actions On Target and Smartplan (if necessary). You've got this! Remember, you're helping people find their dream homes. 🏡",
-  "🌐 **Website and Google Business Page Updates** (if necessary) — Keep things fresh! Even small updates make a big difference.",
-  "📱 **Social Media Updates** (if necessary) — Share what you're proud of! Your content brightens someone's day. ✨",
-  "🎉 **Hub Events** — Community matters, and so do you. These events bring people together!",
-  "📊 **Bookkeeping** — I know this one can feel tedious, but you're doing great keeping everything organized. Almost done!",
-  "🎊 That's all for this cycle! You have two weeks, but I know you'll do amazing. I believe in you! Remember, progress over perfection. 💜"
+  "💜 Hi there! It's time for your biweekly tasks. 🌟",
+  "📰 **Newsletters**",
+  "📧 **Email Campaigns** — Home Actions On Target and Smartplan (if necessary).",
+  "🌐 **Website and Google Business Page Updates** (if necessary).",
+  "📱 **Social Media Updates** (if necessary) ✨",
+  "🎉 **Hub Events**",
+  "📊 **Bookkeeping**",
+  "🎊 That's all for this cycle! You have two weeks. 💜"
 ];
 
 // Encouraging check-in messages (will randomly pick one)
 const checkInMessages = [
   [
-    "Hey! 👋 Just checking in on you.",
     "How are the tasks coming along? Remember, you don't have to finish everything at once.",
     "You're doing better than you think! Take it one step at a time. 💜",
-    "I'm here if you need me. You've got this! ✨"
+    "Hi! You've got this! ✨"
   ],
   [
     "Hi friend! 🌟",
