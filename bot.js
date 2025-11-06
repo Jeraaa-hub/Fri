@@ -230,7 +230,6 @@ client.on('interactionCreate', async (interaction) => {
       const style = interaction.options.getString('style') || 'cinematic';
       const generatedPrompt = generateAIPrompt(theme, type, style);
       
-      // Build the complete message
       const response = [
         `🎨 **AI Prompt Generator** 💜\n`,
         `**Theme:** ${theme}`,
@@ -250,7 +249,6 @@ client.on('interactionCreate', async (interaction) => {
         `You've got this! 💜✨`
       ].join('\n');
       
-      // Reply immediately to avoid timeout
       await interaction.reply(response);
     }
     
@@ -274,23 +272,7 @@ client.on('interactionCreate', async (interaction) => {
         `You're going to create amazing content! 💜✨`
       ].join('\n');
       
-      // Reply immediately to avoid timeout
       await interaction.reply(response);
-    }
-    
-  } catch (error) {
-    console.error('Error handling command:', error);
-    try {
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply('❌ Something went wrong!');
-      } else {
-        await interaction.reply({ content: '❌ Something went wrong!', ephemeral: true });
-      }
-    } catch (e) {
-      console.error('Error sending error message:', e);
-    }
-  }
-});reply(response);
     }
     
   } catch (error) {
@@ -308,7 +290,6 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 client.on('messageCreate', async (message) => {
-  // Debug logging
   console.log(`📨 Message received in channel: "${message.channel.name}" from ${message.author.tag}`);
   
   if (message.author.bot) {
@@ -319,11 +300,9 @@ client.on('messageCreate', async (message) => {
   const content = message.content.toLowerCase();
   console.log(`💬 Message content: "${content}"`);
 
-  // AI Prompts Channel Monitor - Check multiple possible channel name formats
   const channelName = message.channel.name || '';
   console.log(`🔍 Checking channel name: "${channelName}"`);
   
-  // More flexible matching that handles emojis
   const isAIPromptsChannel = 
     channelName.includes('ai-prompts') || 
     channelName.includes('ai-prompt');
@@ -337,14 +316,12 @@ client.on('messageCreate', async (message) => {
     let style = 'cinematic';
     let theme = 'real estate';
     
-    // Detect type from message
     if (content.includes('video') || content.includes('clip')) type = 'video';
     if (content.includes('gif') || content.includes('animated')) type = 'gif';
     if (content.includes('3d') || content.includes('animated')) type = '3d';
     
     console.log(`🎬 Detected type: ${type}`);
     
-    // Detect style from message
     if (content.includes('realistic') || content.includes('photo')) style = 'realistic';
     if (content.includes('cartoon') || content.includes('playful')) style = 'cartoon';
     if (content.includes('minimal')) style = 'minimalist';
@@ -352,7 +329,6 @@ client.on('messageCreate', async (message) => {
     
     console.log(`🎨 Detected style: ${style}`);
     
-    // Detect theme from keywords
     const holidayKeywords = {
       'independence': 'Independence Day', 
       'july 4': 'Independence Day',
@@ -386,15 +362,12 @@ client.on('messageCreate', async (message) => {
     console.log(`📝 Generated prompt: ${generatedPrompt.substring(0, 100)}...`);
     
     try {
-      // Send immediate response
       await message.channel.send(`Hi Jeraaa! 🎨 I heard your vision!\n\n**What you asked for:** ${message.content}`);
       
-      // Small delay before sending the prompt
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       await message.channel.send(`📋 **Your Custom AI Prompt:**\n\`\`\`${generatedPrompt}\`\`\``);
       
-      // Another small delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       await message.channel.send(
@@ -421,7 +394,6 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Real estate triggers
   for (const [trigger, tasks] of Object.entries(taskLists)) {
     if (content.includes(trigger)) {
       console.log(`🏠 Real estate trigger detected: ${trigger}`);
