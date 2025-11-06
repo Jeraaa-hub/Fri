@@ -170,6 +170,7 @@ client.on('ready', async () => {
     { name: 'email', description: 'Get email campaign ideas' },
     { name: 'website', description: 'Check website updates' },
     { name: 'holidays', description: 'Show upcoming holidays' },
+    { name: 'debug', description: 'Check if bot can read messages in this channel' },
     { name: 'prompt', description: 'Generate AI prompts for images/videos', options: [
       { name: 'theme', type: 3, description: 'Theme (e.g., independence-day, halloween)', required: true },
       { name: 'type', type: 3, description: 'Type of content', required: true, choices: [
@@ -204,7 +205,26 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
   
   try {
-    if (interaction.commandName === 'prompt') {
+    if (interaction.commandName === 'debug') {
+      const channelName = interaction.channel.name || 'unknown';
+      const isAIPromptsChannel = 
+        channelName.includes('ai-prompts') || 
+        channelName.includes('ai-prompt');
+      
+      const response = [
+        `🔍 **Bot Debug Info** 💜\n`,
+        `📍 **Current Channel:** ${channelName}`,
+        `✅ **Is AI Prompts Channel?** ${isAIPromptsChannel ? 'YES ✅' : 'NO ❌'}`,
+        `🤖 **Bot Status:** Online and listening`,
+        `📨 **Can read messages?** ${interaction.guild.members.me.permissionsIn(interaction.channel).has('ViewChannel') ? 'YES ✅' : 'NO ❌'}`,
+        `💬 **Can send messages?** ${interaction.guild.members.me.permissionsIn(interaction.channel).has('SendMessages') ? 'YES ✅' : 'NO ❌'}\n`,
+        `💡 **Tip:** If "Is AI Prompts Channel?" is NO, the automatic prompt feature won't work here. Make sure you're in a channel with "ai-prompts" in the name!`
+      ].join('\n');
+      
+      await interaction.reply(response);
+    }
+    
+    else if (interaction.commandName === 'prompt') {
       const theme = interaction.options.getString('theme');
       const type = interaction.options.getString('type');
       const style = interaction.options.getString('style') || 'cinematic';
@@ -270,6 +290,21 @@ client.on('interactionCreate', async (interaction) => {
       console.error('Error sending error message:', e);
     }
   }
+});reply(response);
+    }
+    
+  } catch (error) {
+    console.error('Error handling command:', error);
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply('❌ Something went wrong!');
+      } else {
+        await interaction.reply({ content: '❌ Something went wrong!', ephemeral: true });
+      }
+    } catch (e) {
+      console.error('Error sending error message:', e);
+    }
+  }
 });
 
 client.on('messageCreate', async (message) => {
@@ -288,11 +323,10 @@ client.on('messageCreate', async (message) => {
   const channelName = message.channel.name || '';
   console.log(`🔍 Checking channel name: "${channelName}"`);
   
+  // More flexible matching that handles emojis
   const isAIPromptsChannel = 
-    channelName === 'ai-prompts-🤖' || 
-    channelName === 'ai-prompts-' ||
-    channelName === 'ai-prompts' ||
-    channelName.startsWith('ai-prompts');
+    channelName.includes('ai-prompts') || 
+    channelName.includes('ai-prompt');
   
   console.log(`✅ Is AI Prompts channel? ${isAIPromptsChannel}`);
   
