@@ -25,8 +25,8 @@ const client = new Client({
 const activeTasks = new Map(); // messageId -> { task, deadline, userId, channelId, completed: false }
 let lastWeeklyReminderDate = null;
 
-// Track task groups by channel and title
-const taskGroups = new Map(); // channelId+title -> { title, tasks: [messageIds], channelId, userId }
+// Track task groups: channelId+timestamp -> { title, taskMessageIds: [], completedIds: Set(), channelId, userId }
+const taskGroups = new Map();
 
 // Task lists for real estate triggers
 const taskLists = {
@@ -149,12 +149,15 @@ const WEBSITE_URL = 'https://thegroomesrealtygroup.kw.com/';
 let previousWebsiteState = { blogs: [], listings: [], listingStatuses: {} };
 
 async function sendMessagesWithDelay(channel, messages, delay = 3000) {
+  const sentMessageIds = [];
   for (const message of messages) {
-    await channel.send(message);
+    const sentMsg = await channel.send(message);
+    sentMessageIds.push(sentMsg.id);
     if (messages.indexOf(message) < messages.length - 1) {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
+  return sentMessageIds;
 }
 
 function generateAIPrompt(theme, type, style = 'cinematic') {
@@ -177,12 +180,10 @@ function generateAIPrompt(theme, type, style = 'cinematic') {
 
 // Random task check-in system
 function scheduleRandomTaskCheckIns() {
-  // Check every 6 hours for tasks that need check-ins
   setInterval(async () => {
     for (const [messageId, taskData] of activeTasks.entries()) {
       if (taskData.completed) continue;
       
-      // Random chance (20%) to send a check-in
       if (Math.random() < 0.2) {
         try {
           const channel = await client.channels.fetch(taskData.channelId);
@@ -191,27 +192,25 @@ function scheduleRandomTaskCheckIns() {
           await channel.send(`<@${taskData.userId}>`);
           await sendMessagesWithDelay(channel, randomCheckIn, 2000);
           
-          // Reference the original task
           await channel.send(`📋 **Task:** ${taskData.task}\n⏰ **Deadline:** ${taskData.deadline}`);
         } catch (error) {
           console.error('Error sending task check-in:', error);
         }
       }
     }
-  }, 6 * 60 * 60 * 1000); // Every 6 hours
+  }, 6 * 60 * 60 * 1000);
 }
 
 // Weekly reminder for incomplete tasks
 function scheduleWeeklyReminders() {
   setInterval(async () => {
     const now = new Date();
-    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const dayOfWeek = now.getDay();
     
-    // Send every Monday at 9 AM (adjust as needed)
     if (dayOfWeek === 1 && now.getHours() === 9) {
       const lastReminderDate = lastWeeklyReminderDate ? new Date(lastWeeklyReminderDate) : null;
       if (lastReminderDate && now - lastReminderDate < 6 * 24 * 60 * 60 * 1000) {
-        return; // Already sent this week
+        return;
       }
       
       const incompleteTasks = [];
@@ -241,14 +240,13 @@ function scheduleWeeklyReminders() {
         }
       }
     }
-  }, 60 * 60 * 1000); // Check every hour
+  }, 60 * 60 * 1000);
 }
 
 client.on('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}!`);
   console.log('🤖 Fri 💜 is ready to help Jeraaa!');
   
-  // Start random task check-ins
   scheduleRandomTaskCheckIns();
   scheduleWeeklyReminders();
   
@@ -300,17 +298,15 @@ client.on('interactionCreate', async (interaction) => {
   
   try {
     if (interaction.commandName === 'newtask') {
-      // Reply immediately to avoid timeout
       await interaction.reply({
         content: '⏳ Creating your task...',
-        flags: 64 // This is the ephemeral flag
+        flags: 64
       });
 
       const task = interaction.options.getString('task');
       const deadline = interaction.options.getString('deadline');
       const userId = interaction.user.id;
       
-      // Find the new-tasks channel
       const guild = interaction.guild;
       const newTasksChannel = guild.channels.cache.find(
         ch => ch.name.includes('new-tasks') || ch.name.includes('new-task')
@@ -323,7 +319,6 @@ client.on('interactionCreate', async (interaction) => {
         return;
       }
       
-      // Send task to new-tasks channel
       const taskMessage = await newTasksChannel.send(
         `Hi Jeraaa! 💜 You have a new task:\n\n` +
         `📋 **Task:** ${task}\n` +
@@ -331,7 +326,6 @@ client.on('interactionCreate', async (interaction) => {
         `React with 👍 when you finish this task!`
       );
       
-      // Store task data
       activeTasks.set(taskMessage.id, {
         task: task,
         deadline: deadline,
@@ -434,7 +428,6 @@ client.on('interactionCreate', async (interaction) => {
 client.on('messageReactionAdd', async (reaction, user) => {
   if (user.bot) return;
   
-  // Handle partial reactions
   if (reaction.partial) {
     try {
       await reaction.fetch();
@@ -444,144 +437,73 @@ client.on('messageReactionAdd', async (reaction, user) => {
     }
   }
   
-  // Check if this is a thumbs up on a tracked task
   if (reaction.emoji.name === '👍') {
     const messageId = reaction.message.id;
     const channelName = reaction.message.channel.name || '';
     
-    // Mark message as completed
-    await reaction.message.react('✅');
+    console.log(`👍 Thumbs up detected on message ID: ${messageId} in channel: ${channelName}`);
     
-    console.log(`👍 Thumbs up detected in channel: ${channelName}`);
-    
-    // Check if this is a real estate task channel
-    const realEstateChannels = ['coming-soon', 'just-listed', 'open-house', 'under-contract', 'just-closed'];
-    const isRealEstateChannel = realEstateChannels.some(ch => channelName.includes(ch));
-    
-    // Check if this is the biweekly tasks channel
-    const isBiweeklyChannel = channelName.includes('biweekly-task');
-    
-    if (isRealEstateChannel) {
-      console.log('🏠 Real estate channel detected, checking for completion...');
-      
-      // Find all messages in the current conversation thread
-      const messages = await reaction.message.channel.messages.fetch({ limit: 20 });
-      
-      // Find the task title and all task messages
-      let taskTitle = null;
-      let taskMessages = [];
-      
-      // Look for the task title and all task messages
-      const sortedMessages = Array.from(messages.values()).sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-      
-      for (const msg of sortedMessages) {
-        if (msg.author.bot && msg.author.username.includes('Fri')) {
-          // Check if this is a task title message (contains address or property info)
-          if (!taskTitle && (msg.content.includes('here are your tasks') || msg.content.includes('Somerset') || msg.content.includes('NJ'))) {
-            // Try to extract title from previous user message
-            const prevMessages = sortedMessages.filter(m => m.createdTimestamp < msg.createdTimestamp);
-            const userMsg = prevMessages.reverse().find(m => !m.author.bot);
-            if (userMsg) {
-              taskTitle = userMsg.content;
+    // Check for task group completion
+    for (const [groupKey, groupData] of taskGroups.entries()) {
+      if (groupData.taskMessageIds.includes(messageId)) {
+        // Add this message to completed set
+        groupData.completedIds.add(messageId);
+        
+        console.log(`✅ Marked task as complete. Progress: ${groupData.completedIds.size}/${groupData.taskMessageIds.length}`);
+        
+        // Check if all tasks are completed
+        if (groupData.completedIds.size === groupData.taskMessageIds.length) {
+          console.log(`🎉 ALL TASKS COMPLETED for: ${groupData.title}`);
+          
+          // Find main-chat channel
+          const mainChatChannel = reaction.message.guild.channels.cache.find(
+            ch => ch.name.includes('main-chat')
+          );
+          
+          if (mainChatChannel) {
+            const channelEmojis = {
+              'coming-soon': '🔜',
+              'just-listed': '⬆️',
+              'open-house': '🪧',
+              'under-contract': '🔁',
+              'just-closed': '⬇️',
+              'biweekly-task': '🗒️'
+            };
+            
+            const emoji = Object.entries(channelEmojis).find(([key]) => channelName.includes(key))?.[1] || '✅';
+            
+            if (channelName.includes('biweekly-task')) {
+              // Biweekly tasks completion message
+              const now = new Date();
+              const nextReset = new Date(now);
+              nextReset.setDate(now.getDate() + 14);
+              const resetDateStr = nextReset.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+              
+              await mainChatChannel.send(
+                `🎊 Congratulations, Jeraaa! You've completed all your biweekly tasks!\n\n` +
+                `Your next cycle will start again on **${resetDateStr}**.\n\n` +
+                `Excellent work staying organized and on schedule! 📅✨`
+              );
+            } else {
+              // Real estate task completion message
+              await mainChatChannel.send(
+                `🎉 Congratulations, Jeraaa! You've completed all tasks for:\n\n` +
+                `${emoji} **${groupData.title}**\n\n` +
+                `Great work staying on top of your marketing! 💼✨`
+              );
             }
-          }
-          
-          // Collect all task messages with emojis
-          if (msg.content.match(/^[📋📸🎨✍️✅🚀💾🌐📍📰📬🎯📅💰💌📝💰📊✔️🏡📁]/)) {
-            taskMessages.push(msg);
+            
+            console.log('✅ Congratulatory message sent to main-chat!');
+            
+            // Clean up this task group
+            taskGroups.delete(groupKey);
           }
         }
-      }
-      
-      console.log(`📋 Found ${taskMessages.length} task messages`);
-      console.log(`📝 Task title: ${taskTitle}`);
-      
-      // Check if the reacted message is the LAST task in the list
-      const lastTaskMessage = taskMessages[taskMessages.length - 1];
-      
-      if (lastTaskMessage && reaction.message.id === lastTaskMessage.id) {
-        console.log('✅ User reacted to the LAST task! Sending congratulations...');
-        
-        // Find main-chat channel
-        const mainChatChannel = reaction.message.guild.channels.cache.find(
-          ch => ch.name.includes('main-chat')
-        );
-        
-        if (mainChatChannel) {
-          const channelEmojis = {
-            'coming-soon': '🔜',
-            'just-listed': '⬆️',
-            'open-house': '🪧',
-            'under-contract': '🔁',
-            'just-closed': '⬇️'
-          };
-          
-          const emoji = Object.entries(channelEmojis).find(([key]) => channelName.includes(key))?.[1] || '✅';
-          
-          await mainChatChannel.send(
-            `🎉 Congratulations, Jeraaa! You've completed all tasks for:\n\n` +
-            `${emoji} **${taskTitle || 'Property Task'}**\n\n` +
-            `Great work staying on top of your marketing! 💼✨`
-          );
-          
-          console.log('✅ Congratulatory message sent to main-chat!');
-        }
-      } else {
-        console.log('⏳ Not the last task yet. Keep going!');
+        break;
       }
     }
     
-    if (isBiweeklyChannel) {
-      console.log('📅 Biweekly tasks channel detected, checking for completion...');
-      
-      // Find all messages in the channel
-      const messages = await reaction.message.channel.messages.fetch({ limit: 50 });
-      
-      // Find all task messages from Fri (lines with ** markers)
-      const taskMessages = Array.from(messages.values())
-        .filter(msg => 
-          msg.author.bot && 
-          msg.author.username.includes('Fri') &&
-          msg.content.includes('**') &&
-          !msg.content.includes('time for your biweekly tasks') &&
-          !msg.content.includes('That\'s all for this cycle')
-        )
-        .sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-      
-      console.log(`📋 Found ${taskMessages.length} biweekly task messages`);
-      
-      // Check if the reacted message is the LAST task in the list
-      const lastTaskMessage = taskMessages[taskMessages.length - 1];
-      
-      if (lastTaskMessage && reaction.message.id === lastTaskMessage.id) {
-        console.log('✅ User reacted to the LAST biweekly task! Sending congratulations...');
-        
-        // Find main-chat channel
-        const mainChatChannel = reaction.message.guild.channels.cache.find(
-          ch => ch.name.includes('main-chat')
-        );
-        
-        if (mainChatChannel) {
-          // Calculate next reset date (2 weeks from now)
-          const now = new Date();
-          const nextReset = new Date(now);
-          nextReset.setDate(now.getDate() + 14);
-          const resetDateStr = nextReset.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-          
-          await mainChatChannel.send(
-            `🎊 Congratulations, Jeraaa! You've completed all your biweekly tasks!\n\n` +
-            `Your next cycle will start again on **${resetDateStr}**.\n\n` +
-            `Excellent work staying organized and on schedule! 📅✨`
-          );
-          
-          console.log('✅ Biweekly completion message sent to main-chat!');
-        }
-      } else {
-        console.log('⏳ Not the last biweekly task yet. Keep going!');
-      }
-    }
-    
-    // Handle individual task completion (existing code for new-tasks channel)
+    // Handle individual task completion (for new-tasks channel)
     if (activeTasks.has(messageId)) {
       const taskData = activeTasks.get(messageId);
       
@@ -712,11 +634,53 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  // Check for biweekly tasks trigger
+  if (channelName.includes('biweekly-task') && content.includes('biweekly')) {
+    console.log('📅 Biweekly tasks trigger detected!');
+    
+    const personalizedTasks = biweeklyTasks.map(task => task.replace('<@USER_ID>', `<@${message.author.id}>`));
+    const sentMessageIds = await sendMessagesWithDelay(message.channel, personalizedTasks);
+    
+    // Create a task group for biweekly tasks (skip first and last messages)
+    const taskMessageIds = sentMessageIds.slice(1, -1);
+    const groupKey = `${message.channel.id}-${Date.now()}`;
+    
+    taskGroups.set(groupKey, {
+      title: 'Biweekly Tasks',
+      taskMessageIds: taskMessageIds,
+      completedIds: new Set(),
+      channelId: message.channel.id,
+      userId: message.author.id
+    });
+    
+    console.log(`✅ Created biweekly task group with ${taskMessageIds.length} tasks`);
+    return;
+  }
+
+  // Check for real estate trigger words
   for (const [trigger, tasks] of Object.entries(taskLists)) {
     if (content.includes(trigger)) {
       console.log(`🏠 Real estate trigger detected: ${trigger}`);
+      
+      // Get the original message as the title
+      const taskTitle = message.content;
+      
       const personalizedTasks = tasks.map(task => task.replace('<@USER_ID>', `<@${message.author.id}>`));
-      await sendMessagesWithDelay(message.channel, personalizedTasks);
+      const sentMessageIds = await sendMessagesWithDelay(message.channel, personalizedTasks);
+      
+      // Create a task group (skip first greeting and last closing message)
+      const taskMessageIds = sentMessageIds.slice(1, -1);
+      const groupKey = `${message.channel.id}-${Date.now()}`;
+      
+      taskGroups.set(groupKey, {
+        title: taskTitle,
+        taskMessageIds: taskMessageIds,
+        completedIds: new Set(),
+        channelId: message.channel.id,
+        userId: message.author.id
+      });
+      
+      console.log(`✅ Created task group for "${taskTitle}" with ${taskMessageIds.length} tasks`);
       break;
     }
   }
