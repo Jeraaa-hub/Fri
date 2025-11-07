@@ -502,10 +502,16 @@ client.on('messageReactionAdd', async (reaction, user) => {
         const hasThumbsUp = taskMsg.reactions.cache.some(r => r.emoji.name === '👍' && r.count > 0);
         const hasCheckmark = taskMsg.reactions.cache.some(r => r.emoji.name === '✅' && r.count > 0);
         
+        console.log(`Checking task: ${taskMsg.content.substring(0, 50)}...`);
+        console.log(`  Has 👍: ${hasThumbsUp} (count: ${taskMsg.reactions.cache.find(r => r.emoji.name === '👍')?.count || 0})`);
+        console.log(`  Has ✅: ${hasCheckmark} (count: ${taskMsg.reactions.cache.find(r => r.emoji.name === '✅')?.count || 0})`);
+        
         if (!hasThumbsUp && !hasCheckmark) {
           allCompleted = false;
-          console.log(`⏳ Task not completed: ${taskMsg.content.substring(0, 50)}...`);
+          console.log(`⏳ Task NOT completed: ${taskMsg.content.substring(0, 50)}...`);
           break;
+        } else {
+          console.log(`✅ Task completed!`);
         }
       }
       
