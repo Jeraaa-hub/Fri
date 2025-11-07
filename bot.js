@@ -467,7 +467,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
       // Find all messages in the current conversation thread
       const messages = await reaction.message.channel.messages.fetch({ limit: 20 });
       
-      // Find the task title (first message from Fri that contains task info)
+      // Find the task title and all task messages
       let taskTitle = null;
       let taskMessages = [];
       
@@ -478,7 +478,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
         if (msg.author.bot && msg.author.username.includes('Fri')) {
           // Check if this is a task title message (contains address or property info)
           if (!taskTitle && (msg.content.includes('here are your tasks') || msg.content.includes('Somerset') || msg.content.includes('NJ'))) {
-            // Try to extract title from previous user message or current message
+            // Try to extract title from previous user message
             const prevMessages = sortedMessages.filter(m => m.createdTimestamp < msg.createdTimestamp);
             const userMsg = prevMessages.reverse().find(m => !m.author.bot);
             if (userMsg) {
@@ -496,28 +496,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
       console.log(`📋 Found ${taskMessages.length} task messages`);
       console.log(`📝 Task title: ${taskTitle}`);
       
-      // Check if all tasks are completed (have 👍 or ✅ reactions)
-      let allCompleted = true;
-      for (const taskMsg of taskMessages) {
-        const hasThumbsUp = taskMsg.reactions.cache.some(r => r.emoji.name === '👍' && r.count > 0);
-        const hasCheckmark = taskMsg.reactions.cache.some(r => r.emoji.name === '✅' && r.count > 0);
-        
-        console.log(`Checking task: ${taskMsg.content.substring(0, 50)}...`);
-        console.log(`  Has 👍: ${hasThumbsUp} (count: ${taskMsg.reactions.cache.find(r => r.emoji.name === '👍')?.count || 0})`);
-        console.log(`  Has ✅: ${hasCheckmark} (count: ${taskMsg.reactions.cache.find(r => r.emoji.name === '✅')?.count || 0})`);
-        
-        if (!hasThumbsUp && !hasCheckmark) {
-          allCompleted = false;
-          console.log(`⏳ Task NOT completed: ${taskMsg.content.substring(0, 50)}...`);
-          break;
-        } else {
-          console.log(`✅ Task completed!`);
-        }
-      }
+      // Check if the reacted message is the LAST task in the list
+      const lastTaskMessage = taskMessages[taskMessages.length - 1];
       
-      console.log(`${allCompleted ? '✅' : '⏳'} All tasks completed: ${allCompleted}`);
-      
-      if (allCompleted && taskMessages.length > 0) {
+      if (lastTaskMessage && reaction.message.id === lastTaskMessage.id) {
+        console.log('✅ User reacted to the LAST task! Sending congratulations...');
+        
         // Find main-chat channel
         const mainChatChannel = reaction.message.guild.channels.cache.find(
           ch => ch.name.includes('main-chat')
@@ -542,6 +526,8 @@ client.on('messageReactionAdd', async (reaction, user) => {
           
           console.log('✅ Congratulatory message sent to main-chat!');
         }
+      } else {
+        console.log('⏳ Not the last task yet. Keep going!');
       }
     }
     
@@ -552,32 +538,24 @@ client.on('messageReactionAdd', async (reaction, user) => {
       const messages = await reaction.message.channel.messages.fetch({ limit: 50 });
       
       // Find all task messages from Fri (lines with ** markers)
-      const taskMessages = Array.from(messages.values()).filter(msg => 
-        msg.author.bot && 
-        msg.author.username.includes('Fri') &&
-        msg.content.includes('**') &&
-        !msg.content.includes('time for your biweekly tasks') &&
-        !msg.content.includes('That\'s all for this cycle')
-      );
+      const taskMessages = Array.from(messages.values())
+        .filter(msg => 
+          msg.author.bot && 
+          msg.author.username.includes('Fri') &&
+          msg.content.includes('**') &&
+          !msg.content.includes('time for your biweekly tasks') &&
+          !msg.content.includes('That\'s all for this cycle')
+        )
+        .sort((a, b) => a.createdTimestamp - b.createdTimestamp);
       
       console.log(`📋 Found ${taskMessages.length} biweekly task messages`);
       
-      // Check if all tasks are completed
-      let allCompleted = true;
-      for (const taskMsg of taskMessages) {
-        const hasThumbsUp = taskMsg.reactions.cache.some(r => r.emoji.name === '👍' && r.count > 0);
-        const hasCheckmark = taskMsg.reactions.cache.some(r => r.emoji.name === '✅' && r.count > 0);
+      // Check if the reacted message is the LAST task in the list
+      const lastTaskMessage = taskMessages[taskMessages.length - 1];
+      
+      if (lastTaskMessage && reaction.message.id === lastTaskMessage.id) {
+        console.log('✅ User reacted to the LAST biweekly task! Sending congratulations...');
         
-        if (!hasThumbsUp && !hasCheckmark) {
-          allCompleted = false;
-          console.log(`⏳ Biweekly task not completed: ${taskMsg.content.substring(0, 50)}...`);
-          break;
-        }
-      }
-      
-      console.log(`${allCompleted ? '✅' : '⏳'} All biweekly tasks completed: ${allCompleted}`);
-      
-      if (allCompleted && taskMessages.length > 0) {
         // Find main-chat channel
         const mainChatChannel = reaction.message.guild.channels.cache.find(
           ch => ch.name.includes('main-chat')
@@ -592,12 +570,14 @@ client.on('messageReactionAdd', async (reaction, user) => {
           
           await mainChatChannel.send(
             `🎊 Congratulations, Jeraaa! You've completed all your biweekly tasks!\n\n` +
-            `Your next cycle will reset on **${resetDateStr}**.\n\n` +
+            `Your next cycle will start again on **${resetDateStr}**.\n\n` +
             `Excellent work staying organized and on schedule! 📅✨`
           );
           
           console.log('✅ Biweekly completion message sent to main-chat!');
         }
+      } else {
+        console.log('⏳ Not the last biweekly task yet. Keep going!');
       }
     }
     
