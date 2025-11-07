@@ -657,14 +657,24 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Check for real estate trigger words
-  for (const [trigger, tasks] of Object.entries(taskLists)) {
-    if (content.includes(trigger)) {
-      console.log(`🏠 Real estate trigger detected: ${trigger}`);
+  // Check for real estate trigger words - but only in their respective channels
+  const channelTriggerMap = {
+    'coming-soon': 'coming soon',
+    'just-listed': 'just listed',
+    'open-house': 'open house',
+    'under-contract': 'under contract',
+    'just-closed': 'just closed'
+  };
+  
+  // Check if the current channel matches a real estate channel
+  for (const [channelKey, trigger] of Object.entries(channelTriggerMap)) {
+    if (channelName.includes(channelKey) && content.includes(trigger)) {
+      console.log(`🏠 Real estate trigger detected: ${trigger} in correct channel: ${channelName}`);
       
       // Get the original message as the title
       const taskTitle = message.content;
       
+      const tasks = taskLists[trigger];
       const personalizedTasks = tasks.map(task => task.replace('<@USER_ID>', `<@${message.author.id}>`));
       const sentMessageIds = await sendMessagesWithDelay(message.channel, personalizedTasks);
       
