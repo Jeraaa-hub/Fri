@@ -4,7 +4,7 @@ const http = require('http');
 // Create HTTP server for Render
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Fri 💜 is running!');
+  res.end('OK');
 });
 
 const PORT = process.env.PORT || 3000;
@@ -422,7 +422,7 @@ client.on('interactionCreate', async (interaction) => {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply('❌ Something went wrong!');
       } else {
-        await interaction.reply({ content: '❌ Something went wrong!', ephemeral: true });
+        await interaction.reply({ content: '❌ Something went wrong!', flags: 64 });
       }
     } catch (e) {
       console.error('Error sending error message:', e);
