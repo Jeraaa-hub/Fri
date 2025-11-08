@@ -20,8 +20,14 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
+        console.log('📥 Received webhook body:', body); // DEBUG LOG
         const data = JSON.parse(body);
+        console.log('🔍 Parsed data:', data); // DEBUG LOG
+        console.log('🔐 Expected secret:', WEBHOOK_SECRET); // DEBUG LOG
+        console.log('🔑 Received secret:', data.secret); // DEBUG LOG
+        
         if (data.secret !== WEBHOOK_SECRET) {
+          console.log('❌ Secret mismatch!'); // DEBUG LOG
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Unauthorized' }));
           return;
