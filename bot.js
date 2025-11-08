@@ -279,7 +279,7 @@ const taskCheckInMessages = [
   ["Hello! ✨", "Friendly reminder about your task here!", "Take your time, you've got this! 💜"]
 ];
 
-let lastWeeklyReminder Date = null;
+let lastWeeklyReminderDate = null;
 let lastHolidayReminderDate = {};
 let lastNewsletterReminderDate = null;
 
