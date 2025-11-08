@@ -80,9 +80,9 @@ const client = new Client({
   ],
 });
 
+// Storage variables
 const activeTasks = new Map();
 const taskGroups = new Map();
-
 let lastWeeklyReminderDate = null;
 let lastHolidayReminderDate = {};
 let lastNewsletterReminderDate = null;
@@ -282,10 +282,6 @@ const taskCheckInMessages = [
   ["Hello! ✨", "Friendly reminder about your task here!", "Take your time, you've got this! 💜"]
 ];
 
-let lastWeeklyReminderDate = null;
-let lastHolidayReminderDate = {};
-let lastNewsletterReminderDate = null;
-
 async function sendMessagesWithDelay(channel, messages, delay = 3000) {
   const sentMessageIds = [];
   for (const message of messages) {
@@ -481,7 +477,6 @@ function getUpcomingHolidays(limit = 10) {
     const [month, day] = holiday.date.split('-');
     const holidayDate = new Date(now.getFullYear(), parseInt(month) - 1, parseInt(day));
     
-    // If holiday already passed this year, check next year
     if (holidayDate < now) {
       holidayDate.setFullYear(now.getFullYear() + 1);
     }
@@ -497,7 +492,6 @@ function getUpcomingHolidays(limit = 10) {
     }
   }
   
-  // Sort by days until
   upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
   
   return upcoming.slice(0, limit);
