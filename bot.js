@@ -1,15 +1,74 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const http = require('http');
+const url = require('url');
 
-// Create HTTP server for Render
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('OK');
+// Webhook secret for security
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'your-secret-key-here';
+
+// Create HTTP server for Render AND webhooks
+const server = http.createServer(async (req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+  
+  if (parsedUrl.pathname === '/' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Fri 💜 is running!');
+    return;
+  }
+  
+  if (parsedUrl.pathname === '/webhook/social-media' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        if (data.secret !== WEBHOOK_SECRET) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+        await handleSocialMediaWebhook(data);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'Webhook received!' }));
+      } catch (error) {
+        console.error('Error processing webhook:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
+      }
+    });
+    return;
+  }
+  
+  if (parsedUrl.pathname === '/webhook/google-business' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        if (data.secret !== WEBHOOK_SECRET) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+        await handleGoogleBusinessWebhook(data);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'Webhook received!' }));
+      } catch (error) {
+        console.error('Error processing webhook:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
+      }
+    });
+    return;
+  }
+  
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not Found');
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🌐 HTTP server listening on port ${PORT}`);
+  console.log(`📡 Webhook endpoints ready!`);
 });
 
 const client = new Client({
@@ -21,12 +80,115 @@ const client = new Client({
   ],
 });
 
-// Task tracking storage (in production, use a database)
-const activeTasks = new Map(); // messageId -> { task, deadline, userId, channelId, completed: false }
+const activeTasks = new Map();
 let lastWeeklyReminderDate = null;
-
-// Track task groups: channelId+timestamp -> { title, taskMessageIds: [], completedIds: Set(), channelId, userId }
 const taskGroups = new Map();
+
+// EXPANDED Holiday & Awareness Days List
+const allHolidays = [
+  // January
+  { date: '01-01', name: 'New Year\'s Day', emoji: '🎉', tip: 'New Year, New Home content - fresh starts and resolutions!', category: 'Major Holiday' },
+  { date: '01-06', name: 'National Bean Day', emoji: '🫘', tip: 'Fun, light-hearted content about cozy homes', category: 'Food Day' },
+  { date: '01-13', name: 'National Sticker Day', emoji: '✨', tip: 'Behind-the-scenes of creating marketing materials', category: 'Fun Day' },
+  { date: '01-17', name: 'Martin Luther King Jr. Day', emoji: '✊', tip: 'Community and equality - highlighting diverse neighborhoods', category: 'Federal Holiday' },
+  { date: '01-20', name: 'National Cheese Lovers Day', emoji: '🧀', tip: 'Homes with gourmet kitchens for cheese boards', category: 'Food Day' },
+  { date: '01-24', name: 'National Compliment Day', emoji: '💕', tip: 'Thank your clients with appreciation posts', category: 'Awareness Day' },
+  
+  // February
+  { date: '02-02', name: 'Groundhog Day', emoji: '🦫', tip: 'Spring market predictions for real estate', category: 'Fun Holiday' },
+  { date: '02-07', name: 'National Send a Card Day', emoji: '💌', tip: 'Promote your handwritten notes to clients', category: 'Awareness Day' },
+  { date: '02-11', name: 'National Make a Friend Day', emoji: '👋', tip: 'Networking and community building content', category: 'Awareness Day' },
+  { date: '02-14', name: 'Valentine\'s Day', emoji: '💕', tip: 'Fall in love with your dream home', category: 'Major Holiday' },
+  { date: '02-17', name: 'Random Acts of Kindness Day', emoji: '❤️', tip: 'Share stories of helping clients achieve their dreams', category: 'Awareness Day' },
+  { date: '02-22', name: 'National Margarita Day', emoji: '🍹', tip: 'Homes with outdoor entertaining spaces', category: 'Food Day' },
+  { date: '02-27', name: 'National Strawberry Day', emoji: '🍓', tip: 'Homes with gardens or farm markets nearby', category: 'Food Day' },
+  
+  // March
+  { date: '03-03', name: 'National Employee Appreciation Day', emoji: '🙌', tip: 'Thank your team and partners', category: 'Awareness Day' },
+  { date: '03-08', name: 'International Women\'s Day', emoji: '👩', tip: 'Highlight women in real estate and homeownership', category: 'Awareness Day' },
+  { date: '03-12', name: 'National Girl Scout Day', emoji: '🍪', tip: 'Community involvement and local activities', category: 'Awareness Day' },
+  { date: '03-17', name: 'St. Patrick\'s Day', emoji: '🍀', tip: 'Lucky to find your dream home', category: 'Major Holiday' },
+  { date: '03-20', name: 'First Day of Spring', emoji: '🌸', tip: 'Spring home refresh and curb appeal tips', category: 'Season' },
+  { date: '03-26', name: 'National Spinach Day', emoji: '🥬', tip: 'Healthy homes with great kitchens', category: 'Food Day' },
+  
+  // April
+  { date: '04-01', name: 'April Fools\' Day', emoji: '😜', tip: 'Fun, playful real estate content', category: 'Fun Holiday' },
+  { date: '04-07', name: 'National Beer Day', emoji: '🍺', tip: 'Homes near breweries or with home bars', category: 'Food Day' },
+  { date: '04-11', name: 'National Pet Day', emoji: '🐾', tip: 'Pet-friendly homes and yards', category: 'Awareness Day' },
+  { date: '04-22', name: 'Earth Day', emoji: '🌍', tip: 'Eco-friendly homes and sustainable living', category: 'Awareness Day' },
+  { date: '04-23', name: 'National Picnic Day', emoji: '🧺', tip: 'Homes with beautiful outdoor spaces', category: 'Food Day' },
+  { date: '04-26', name: 'National Kids & Pets Day', emoji: '👶🐕', tip: 'Family-friendly neighborhoods with parks', category: 'Awareness Day' },
+  { date: '04-30', name: 'National Adopt a Shelter Pet Day', emoji: '🐶', tip: 'Homes with fenced yards for pets', category: 'Awareness Day' },
+  
+  // May - Mental Health Awareness Month
+  { date: '05-01', name: 'Mental Health Awareness Month Begins', emoji: '💚', tip: 'Creating peaceful, healthy home environments', category: 'Awareness Month' },
+  { date: '05-04', name: 'Star Wars Day', emoji: '⭐', tip: 'May the Fourth be with you - fun themed content', category: 'Fun Day' },
+  { date: '05-05', name: 'Cinco de Mayo', emoji: '🌮', tip: 'Homes with great entertaining spaces', category: 'Cultural Holiday' },
+  { date: '05-11', name: 'Mother\'s Day', emoji: '💐', tip: 'Homes that moms will love', category: 'Major Holiday' },
+  { date: '05-15', name: 'National Pizza Day', emoji: '🍕', tip: 'Kitchen spaces perfect for pizza nights', category: 'Food Day' },
+  { date: '05-23', name: 'National Meditation Day', emoji: '🧘', tip: 'Peaceful home spaces and zen gardens', category: 'Awareness Day' },
+  { date: '05-26', name: 'Memorial Day', emoji: '🇺🇸', tip: 'Honor veterans, community events', category: 'Federal Holiday' },
+  { date: '05-31', name: 'National Macaroon Day', emoji: '🧁', tip: 'Sweet homes and cozy kitchens', category: 'Food Day' },
+  
+  // June - Pride Month
+  { date: '06-01', name: 'Pride Month Begins', emoji: '🏳️‍🌈', tip: 'Celebrate diversity and inclusive communities', category: 'Awareness Month' },
+  { date: '06-05', name: 'National Donut Day', emoji: '🍩', tip: 'Local coffee shops near your listings', category: 'Food Day' },
+  { date: '06-08', name: 'National Best Friends Day', emoji: '👯', tip: 'Homes perfect for hosting friends', category: 'Awareness Day' },
+  { date: '06-15', name: 'Father\'s Day', emoji: '👨', tip: 'Dad\'s dream spaces - garages, workshops', category: 'Major Holiday' },
+  { date: '06-19', name: 'Juneteenth', emoji: '✊🏿', tip: 'Celebrate freedom and community', category: 'Federal Holiday' },
+  { date: '06-20', name: 'First Day of Summer', emoji: '☀️', tip: 'Summer outdoor living spaces', category: 'Season' },
+  { date: '06-21', name: 'International Yoga Day', emoji: '🧘‍♀️', tip: 'Homes with workout spaces or yoga rooms', category: 'Awareness Day' },
+  { date: '06-27', name: 'National Sunglasses Day', emoji: '😎', tip: 'Homes with great natural light', category: 'Fun Day' },
+  
+  // July
+  { date: '07-04', name: 'Independence Day', emoji: '🎆', tip: 'Freedom of homeownership', category: 'Major Holiday' },
+  { date: '07-07', name: 'World Chocolate Day', emoji: '🍫', tip: 'Sweet homes and cozy spaces', category: 'Food Day' },
+  { date: '07-12', name: 'National Simplicity Day', emoji: '🌿', tip: 'Minimalist home designs', category: 'Awareness Day' },
+  { date: '07-17', name: 'National Ice Cream Day', emoji: '🍦', tip: 'Homes near ice cream shops', category: 'Food Day' },
+  { date: '07-24', name: 'National Tequila Day', emoji: '🍹', tip: 'Outdoor entertaining spaces', category: 'Food Day' },
+  { date: '07-30', name: 'International Day of Friendship', emoji: '🤝', tip: 'Community and neighborhood connections', category: 'Awareness Day' },
+  
+  // August
+  { date: '08-08', name: 'International Cat Day', emoji: '🐱', tip: 'Homes with cozy nooks for cats', category: 'Awareness Day' },
+  { date: '08-10', name: 'National Lazy Day', emoji: '😴', tip: 'Relaxing home spaces', category: 'Fun Day' },
+  { date: '08-13', name: 'National Prosecco Day', emoji: '🥂', tip: 'Luxury homes with wine cellars', category: 'Food Day' },
+  { date: '08-15', name: 'National Relaxation Day', emoji: '🛀', tip: 'Spa bathrooms and peaceful retreats', category: 'Awareness Day' },
+  { date: '08-19', name: 'National Aviation Day', emoji: '✈️', tip: 'Homes near airports or travel-friendly locations', category: 'Awareness Day' },
+  { date: '08-26', name: 'National Dog Day', emoji: '🐕', tip: 'Homes with yards perfect for dogs', category: 'Awareness Day' },
+  
+  // September
+  { date: '09-01', name: 'Labor Day', emoji: '⚒️', tip: 'End of summer market shift', category: 'Federal Holiday' },
+  { date: '09-13', name: 'National Peanut Day', emoji: '🥜', tip: 'Fun kitchen and snack spaces', category: 'Food Day' },
+  { date: '09-19', name: 'International Talk Like a Pirate Day', emoji: '🏴‍☠️', tip: 'Fun, quirky content', category: 'Fun Day' },
+  { date: '09-22', name: 'First Day of Fall', emoji: '🍂', tip: 'Fall home decor and cozy vibes', category: 'Season' },
+  { date: '09-27', name: 'National Crush a Can Day', emoji: '♻️', tip: 'Sustainability and eco-friendly homes', category: 'Awareness Day' },
+  
+  // October - Breast Cancer Awareness Month
+  { date: '10-01', name: 'Breast Cancer Awareness Month Begins', emoji: '🎀', tip: 'Support awareness with pink-themed content', category: 'Awareness Month' },
+  { date: '10-04', name: 'National Taco Day', emoji: '🌮', tip: 'Homes near great restaurants', category: 'Food Day' },
+  { date: '10-10', name: 'World Mental Health Day', emoji: '💚', tip: 'Creating peaceful home environments', category: 'Awareness Day' },
+  { date: '10-13', name: 'National No Bra Day', emoji: '💜', tip: 'Comfort at home content (keep it tasteful!)', category: 'Awareness Day' },
+  { date: '10-16', name: 'National Boss\'s Day', emoji: '👔', tip: 'Thank your broker or team leads', category: 'Awareness Day' },
+  { date: '10-31', name: 'Halloween', emoji: '🎃', tip: 'Family-friendly neighborhoods', category: 'Major Holiday' },
+  
+  // November - Movember (Men's Health Month)
+  { date: '11-01', name: 'Movember Begins (Men\'s Health)', emoji: '👨‍⚕️', tip: 'Healthy living spaces for men', category: 'Awareness Month' },
+  { date: '11-01', name: 'National Authors\' Day', emoji: '📚', tip: 'Homes with reading nooks and libraries', category: 'Awareness Day' },
+  { date: '11-03', name: 'National Sandwich Day', emoji: '🥪', tip: 'Kitchen spaces perfect for meal prep', category: 'Food Day' },
+  { date: '11-11', name: 'Veterans Day', emoji: '🎖️', tip: 'Honor veterans in your community', category: 'Federal Holiday' },
+  { date: '11-13', name: 'World Kindness Day', emoji: '💝', tip: 'Kindness in real estate transactions', category: 'Awareness Day' },
+  { date: '11-27', name: 'Thanksgiving', emoji: '🦃', tip: 'Dining spaces perfect for hosting', category: 'Major Holiday' },
+  { date: '11-28', name: 'Small Business Saturday', emoji: '🛍️', tip: 'Support local businesses near your listings', category: 'Awareness Day' },
+  
+  // December
+  { date: '12-03', name: 'National Roof Over Your Head Day', emoji: '🏠', tip: 'Perfect day to celebrate homeownership!', category: 'Real Estate Day' },
+  { date: '12-04', name: 'National Cookie Day', emoji: '🍪', tip: 'Cozy kitchens for holiday baking', category: 'Food Day' },
+  { date: '12-10', name: 'Human Rights Day', emoji: '✊', tip: 'Fair housing and equality', category: 'Awareness Day' },
+  { date: '12-21', name: 'First Day of Winter', emoji: '❄️', tip: 'Cozy winter home features', category: 'Season' },
+  { date: '12-24', name: 'Christmas Eve', emoji: '🎄', tip: 'Holiday home tours', category: 'Major Holiday' },
+  { date: '12-25', name: 'Christmas', emoji: '🎅', tip: 'Holiday hosting spaces', category: 'Major Holiday' },
+  { date: '12-31', name: 'New Year\'s Eve', emoji: '🥳', tip: 'Year in review and goals for next year', category: 'Major Holiday' }
+];
 
 // Task lists for real estate triggers
 const taskLists = {
@@ -95,60 +257,31 @@ const biweeklyTasks = [
   "**Email Campaigns** — Home Actions On Target and Smartplan (if necessary)📧",
   "**Website and Google Business Page Updates** (if necessary)🌐",
   "**Social Media Updates** (if necessary)📱",
-  "**Hub Events**🎉" ,
-  "**Bookkeeping📊**" ,
+  "**Hub Events**🎉",
+  "**Bookkeeping📊**",
   "🎊 That's all for this cycle! You have two weeks, but I know you'll do amazing. I believe in you! Remember, progress over perfection. 💜"
-];
-
-// Check-in messages for tasks
-const taskCheckInMessages = [
-  ["Hey Jeraaa! 👋", "Just checking in on your task.", "How's it going? Remember, progress over perfection! 💜"],
-  ["Hi friend! 🌟", "Just wanted to see how you're doing with this task.", "No pressure! You're doing amazing. 💪"],
-  ["Hello! ✨", "Friendly reminder about your task here!", "Take your time, you've got this! 💜"],
-  ["Hey there! 💫", "How's this task coming along?", "Even small progress is still progress! Keep going! 🎉"],
-  ["Hi Jeraaa! 🌸", "Just popping in to check on you.", "Remember, I believe in you! You're capable of great things! 💜✨"]
-];
-
-// Check-in messages
-const checkInMessages = [
-  ["Hey! 👋 Just checking in on you.", "How are the tasks coming along? Remember, you don't have to finish everything at once.", "You're doing better than you think! Take it one step at a time. 💜", "I'm here if you need me. You've got this! ✨"],
-  ["Hi friend! 🌟", "Just a gentle reminder about your biweekly tasks.", "No pressure at all — just wanted to say I believe in you!", "You're capable of amazing things. Keep going! 💪💜"],
-  ["Good day! ☀️", "Checking in to see how you're doing with your tasks.", "Remember: Progress, not perfection. Every little bit counts!", "You're not alone in this. I'm cheering for you! 🎉"],
-  ["Hello! 🌸", "Just a friendly reminder that your deadline is coming up.", "But don't stress! You still have time, and you're doing great.", "Take a deep breath. You've got this! 💜✨"],
-  ["Hey there! 💫", "How are your tasks going? No judgment here!", "Even if you haven't started everything, that's okay. Start small.", "I'm proud of you for showing up. That's what matters most! 💜"]
 ];
 
 // Newsletter themes 2025
 const newsletterThemes2025 = [
-  { date: '2025-01-01', theme: 'Happy New Year', topics: ['New Year, New Home: Why January is Perfect for House Hunting in NJ', 'New Year\'s Resolutions for Homeowners: Property Goals for 2025', 'Fresh Start: How to Prepare Your Home for Sale in the New Year', 'January Market Trends: What NJ Homebuyers Need to Know', 'New Year Home Maintenance Checklist for New Jersey Properties']},
-  { date: '2025-02-09', theme: 'Valentines Day', topics: ['Fall in Love with Your Dream Home This Valentine\'s Day', 'Love Where You Live: Finding Your Perfect Match in NJ Real Estate', 'Romantic Homes: Properties with Charm and Character in New Jersey', 'Couples\' Guide to Buying Your First Home Together in NJ', 'Valentine\'s Day Home Staging Tips to Make Buyers Fall in Love']},
-  { date: '2025-07-04', theme: 'Independence Day', topics: ['Declare Your Independence: First-Time Homebuyer Guide for NJ', 'Freedom of Homeownership: Breaking Free from Renting', 'July 4th: Homes with Outdoor Entertainment Spaces', 'Summer Market: Why July is Hot for NJ Real Estate', 'Celebrating Independence and Homeownership']},
-  { date: '2025-10-18', theme: 'Halloween', topics: ['Spooktacular Homes: Properties with Halloween Charm in NJ', 'Not So Scary: First-Time Homebuyer Myths Debunked', 'Historic Homes with Character in New Jersey', 'Trick or Treat Streets: Family-Friendly Neighborhoods', 'Fall Curb Appeal Tips']},
-  { date: '2025-11-15', theme: 'Thanksgiving', topics: ['Grateful for Home: What We\'re Thankful for This Season', 'Holiday Hosting: Homes Perfect for Thanksgiving', 'November Negotiations: End-of-Year Opportunities', 'Creating Memories in Your New Home', 'Thanksgiving: A Time to Celebrate Home and Family']},
-  { date: '2025-12-13', theme: 'Christmas', topics: ['Home for the Holidays: Christmas in Your New Jersey Home', 'Holiday Home Staging Tips', 'Gift of Home: Why December Can Be Great for Buying', 'Cozy Winter Properties in NJ', 'Celebrating the Season in Your Dream Home']}
+  { date: '2025-01-01', theme: 'Happy New Year', topics: ['New Year, New Home: Why January is Perfect for House Hunting in NJ', 'New Year\'s Resolutions for Homeowners: Property Goals for 2025']},
+  { date: '2025-02-09', theme: 'Valentines Day', topics: ['Fall in Love with Your Dream Home This Valentine\'s Day', 'Love Where You Live: Finding Your Perfect Match in NJ Real Estate']},
+  { date: '2025-07-04', theme: 'Independence Day', topics: ['Declare Your Independence: First-Time Homebuyer Guide for NJ', 'Freedom of Homeownership: Breaking Free from Renting']},
+  { date: '2025-10-18', theme: 'Halloween', topics: ['Spooktacular Homes: Properties with Halloween Charm in NJ', 'Not So Scary: First-Time Homebuyer Myths Debunked']},
+  { date: '2025-11-15', theme: 'Thanksgiving', topics: ['Grateful for Home: What We\'re Thankful for This Season', 'Holiday Hosting: Homes Perfect for Thanksgiving']},
+  { date: '2025-12-13', theme: 'Christmas', topics: ['Home for the Holidays: Christmas in Your New Jersey Home', 'Holiday Home Staging Tips']}
 ];
 
-// US Holidays
-const usHolidays = [
-  { date: '01-01', name: 'New Year\'s Day', emoji: '🎉', tip: 'New Year, New Home content - fresh starts and resolutions!' },
-  { date: '02-14', name: 'Valentine\'s Day', emoji: '💕', tip: 'Fall in love with your dream home' },
-  { date: '03-17', name: 'St. Patrick\'s Day', emoji: '🍀', tip: 'Lucky to find your dream home' },
-  { date: '04-22', name: 'Earth Day', emoji: '🌍', tip: 'Eco-friendly homes and sustainable living' },
-  { date: '05-11', name: 'Mother\'s Day', emoji: '💐', tip: 'Homes that moms will love' },
-  { date: '06-15', name: 'Father\'s Day', emoji: '👨', tip: 'Dad\'s dream spaces - garages, workshops' },
-  { date: '07-04', name: 'Independence Day', emoji: '🎆', tip: 'Freedom of homeownership' },
-  { date: '09-01', name: 'Labor Day', emoji: '⚒️', tip: 'End of summer market shift' },
-  { date: '10-31', name: 'Halloween', emoji: '🎃', tip: 'Family-friendly neighborhoods' },
-  { date: '11-27', name: 'Thanksgiving', emoji: '🦃', tip: 'Dining spaces perfect for hosting' },
-  { date: '12-25', name: 'Christmas', emoji: '🎅', tip: 'Holiday hosting spaces' }
+// Check-in messages
+const taskCheckInMessages = [
+  ["Hey Jeraaa! 👋", "Just checking in on your task.", "How's it going? Remember, progress over perfection! 💜"],
+  ["Hi friend! 🌟", "Just wanted to see how you're doing with this task.", "No pressure! You're doing amazing. 💪"],
+  ["Hello! ✨", "Friendly reminder about your task here!", "Take your time, you've got this! 💜"]
 ];
 
-let lastBiweeklyTaskDate = null;
-let lastSocialMediaDate = null;
+let lastWeeklyReminder Date = null;
 let lastHolidayReminderDate = {};
 let lastNewsletterReminderDate = null;
-const WEBSITE_URL = 'https://thegroomesrealtygroup.kw.com/';
-let previousWebsiteState = { blogs: [], listings: [], listingStatuses: {} };
 
 async function sendMessagesWithDelay(channel, messages, delay = 3000) {
   const sentMessageIds = [];
@@ -178,6 +311,213 @@ function generateAIPrompt(theme, type, style = 'cinematic') {
   };
   const realEstateElements = ['beautiful architecture', 'well-maintained property', 'attractive curb appeal', 'professional real estate presentation'];
   return `${typeSpecs[type]}, ${theme} themed real estate content, ${styleDescriptions[style]}, ${realEstateElements.join(', ')}, trending on social media, engaging composition, perfect for Instagram and Facebook posts, New Jersey real estate, professional marketing material`;
+}
+
+// Handle Social Media Webhooks
+async function handleSocialMediaWebhook(data) {
+  try {
+    console.log('📱 Received social media webhook:', data);
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) {
+      console.error('❌ No guild found');
+      return;
+    }
+    
+    const socmedChannel = guild.channels.cache.find(
+      ch => ch.name.includes('socmed-posts') || ch.name.includes('socmed-post')
+    );
+    
+    if (!socmedChannel) {
+      console.error('❌ Could not find socmed-posts channel');
+      return;
+    }
+    
+    const embed = new EmbedBuilder()
+      .setColor('#FF69B4')
+      .setTimestamp();
+    
+    const platformEmojis = {
+      'facebook': '📘',
+      'linkedin': '💼',
+      'instagram': '📸'
+    };
+    
+    const platform = data.platform?.toLowerCase() || 'social media';
+    const emoji = platformEmojis[platform] || '📱';
+    
+    if (data.type === 'new_post') {
+      embed.setTitle(`${emoji} New Post on ${data.account_name || 'Social Media'}!`)
+        .setDescription(data.post_text || 'A new post has been published!')
+        .addFields({ name: '🔗 View Post', value: data.post_url || 'No link available' });
+      
+      if (data.image_url) {
+        embed.setImage(data.image_url);
+      }
+      
+      await socmedChannel.send({
+        content: `Hey Jeraaa! 💜 **${data.account_name || 'Your page'}** has a new post!`,
+        embeds: [embed]
+      });
+    } 
+    else if (data.type === 'new_review') {
+      embed.setTitle(`⭐ New Review on ${data.account_name || 'Social Media'}!`)
+        .setDescription(data.review_text || 'A new review has been posted!')
+        .addFields(
+          { name: '⭐ Rating', value: `${data.rating || 'N/A'} stars`, inline: true },
+          { name: '👤 Reviewer', value: data.reviewer_name || 'Anonymous', inline: true }
+        );
+      
+      if (data.review_url) {
+        embed.addFields({ name: '🔗 View Review', value: data.review_url });
+      }
+      
+      await socmedChannel.send({
+        content: `Hey Jeraaa! 🌟 **${data.account_name || 'Your page'}** received a new review!`,
+        embeds: [embed]
+      });
+    }
+    
+    console.log('✅ Social media notification sent successfully');
+  } catch (error) {
+    console.error('❌ Error handling social media webhook:', error);
+  }
+}
+
+// Handle Google Business Webhooks
+async function handleGoogleBusinessWebhook(data) {
+  try {
+    console.log('🌍 Received Google Business webhook:', data);
+    
+    const guild = client.guilds.cache.first();
+    if (!guild) {
+      console.error('❌ No guild found');
+      return;
+    }
+    
+    const websiteChannel = guild.channels.cache.find(
+      ch => ch.name.includes('website') || ch.name.includes('web-site')
+    );
+    
+    if (!websiteChannel) {
+      console.error('❌ Could not find website channel');
+      return;
+    }
+    
+    const embed = new EmbedBuilder()
+      .setColor('#4285F4')
+      .setTimestamp();
+    
+    if (data.type === 'new_review') {
+      embed.setTitle('⭐ New Google Review!')
+        .setDescription(data.review_text || 'The Groomes Realty Group received a new review!')
+        .addFields(
+          { name: '⭐ Rating', value: `${data.rating || 'N/A'} stars`, inline: true },
+          { name: '👤 Reviewer', value: data.reviewer_name || 'Anonymous', inline: true }
+        );
+      
+      if (data.review_url) {
+        embed.addFields({ name: '🔗 View Review', value: data.review_url });
+      }
+      
+      await websiteChannel.send({
+        content: 'Hey Jeraaa! 🌟 The Groomes Realty Group received a new review on Google Business Page!',
+        embeds: [embed]
+      });
+    }
+    else if (data.type === 'new_product') {
+      embed.setTitle('🏡 New Product Added!')
+        .setDescription(data.product_name || 'A new product has been added to Google Business Page!')
+        .addFields(
+          { name: '📍 Details', value: data.product_description || 'Check it out on the page!' }
+        );
+      
+      if (data.product_url) {
+        embed.addFields({ name: '🔗 View Product', value: data.product_url });
+      }
+      
+      if (data.image_url) {
+        embed.setImage(data.image_url);
+      }
+      
+      await websiteChannel.send({
+        content: 'Hey Jeraaa! 🏡 A new product was added to The Groomes Realty Group Google Business Page!',
+        embeds: [embed]
+      });
+    }
+    else if (data.type === 'new_update') {
+      embed.setTitle('📢 New Google Business Update!')
+        .setDescription(data.update_text || 'A new update has been posted to Google Business Page!');
+      
+      if (data.update_url) {
+        embed.addFields({ name: '🔗 View Update', value: data.update_url });
+      }
+      
+      if (data.image_url) {
+        embed.setImage(data.image_url);
+      }
+      
+      await websiteChannel.send({
+        content: 'Hey Jeraaa! 📢 A new update has been posted to The Groomes Realty Group Google Business Page!',
+        embeds: [embed]
+      });
+    }
+    
+    console.log('✅ Google Business notification sent successfully');
+  } catch (error) {
+    console.error('❌ Error handling Google Business webhook:', error);
+  }
+}
+
+// Get next upcoming holidays (within 30 days)
+function getUpcomingHolidays(limit = 10) {
+  const now = new Date();
+  const upcoming = [];
+  
+  for (const holiday of allHolidays) {
+    const [month, day] = holiday.date.split('-');
+    const holidayDate = new Date(now.getFullYear(), parseInt(month) - 1, parseInt(day));
+    
+    // If holiday already passed this year, check next year
+    if (holidayDate < now) {
+      holidayDate.setFullYear(now.getFullYear() + 1);
+    }
+    
+    const daysUntil = Math.ceil((holidayDate - now) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntil >= 0 && daysUntil <= 30) {
+      upcoming.push({
+        ...holiday,
+        daysUntil,
+        dateObj: holidayDate
+      });
+    }
+  }
+  
+  // Sort by days until
+  upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
+  
+  return upcoming.slice(0, limit);
+}
+
+// Get next newsletter
+function getNextNewsletter() {
+  const now = new Date();
+  
+  for (const newsletter of newsletterThemes2025) {
+    const newsletterDate = new Date(newsletter.date);
+    
+    if (newsletterDate > now) {
+      const daysUntil = Math.ceil((newsletterDate - now) / (1000 * 60 * 60 * 24));
+      return {
+        ...newsletter,
+        daysUntil,
+        dateObj: newsletterDate
+      };
+    }
+  }
+  
+  return null;
 }
 
 // Random task check-in system
@@ -249,33 +589,28 @@ function scheduleWeeklyReminders() {
 function scheduleHolidayReminders() {
   setInterval(async () => {
     const now = new Date();
-    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-    const currentDay = String(now.getDate()).padStart(2, '0');
-    const currentDateStr = `${currentMonth}-${currentDay}`;
     
-    // Check each holiday
-    for (const holiday of usHolidays) {
+    for (const holiday of allHolidays) {
       const [holidayMonth, holidayDay] = holiday.date.split('-');
       const holidayDate = new Date(now.getFullYear(), parseInt(holidayMonth) - 1, parseInt(holidayDay));
       
-      // Calculate days until holiday
       const daysUntil = Math.ceil((holidayDate - now) / (1000 * 60 * 60 * 24));
       
-      // Send reminder 5 days before
       if (daysUntil === 5) {
         const lastReminder = lastHolidayReminderDate[holiday.name];
         if (lastReminder && (now - new Date(lastReminder)) < 24 * 60 * 60 * 1000) {
-          continue; // Already sent today
+          continue;
         }
         
         try {
           const guild = client.guilds.cache.first();
-          const holidaysChannel = guild.channels.cache.find(ch => ch.name.includes('holidays'));
+          const holidaysChannel = guild.channels.cache.find(ch => ch.name.includes('holidays') || ch.name.includes('holiday'));
           
           if (holidaysChannel) {
             await holidaysChannel.send(
               `Hi Jeraaa! ${holiday.emoji}\n\n` +
               `**${holiday.name}** is coming up in **5 days**!\n\n` +
+              `📂 **Category:** ${holiday.category}\n` +
               `💡 **Content Idea:** ${holiday.tip}\n\n` +
               `Start creating your social media posts now! 🎨✨`
             );
@@ -288,7 +623,7 @@ function scheduleHolidayReminders() {
         }
       }
     }
-  }, 6 * 60 * 60 * 1000); // Check every 6 hours
+  }, 6 * 60 * 60 * 1000);
 }
 
 // Newsletter reminders (7 days before)
@@ -296,23 +631,19 @@ function scheduleNewsletterReminders() {
   setInterval(async () => {
     const now = new Date();
     
-    // Check each newsletter theme
     for (const newsletter of newsletterThemes2025) {
       const newsletterDate = new Date(newsletter.date);
-      
-      // Calculate days until newsletter
       const daysUntil = Math.ceil((newsletterDate - now) / (1000 * 60 * 60 * 24));
       
-      // Send reminder 7 days before
       if (daysUntil === 7) {
         const lastReminder = lastNewsletterReminderDate;
         if (lastReminder && (now - new Date(lastReminder)) < 24 * 60 * 60 * 1000) {
-          continue; // Already sent today
+          continue;
         }
         
         try {
           const guild = client.guilds.cache.first();
-          const newslettersChannel = guild.channels.cache.find(ch => ch.name.includes('newsletters'));
+          const newslettersChannel = guild.channels.cache.find(ch => ch.name.includes('newsletters') || ch.name.includes('newsletter'));
           
           if (newslettersChannel) {
             const topicsList = newsletter.topics.map((topic, idx) => `${idx + 1}. ${topic}`).join('\n');
@@ -334,12 +665,13 @@ function scheduleNewsletterReminders() {
         }
       }
     }
-  }, 6 * 60 * 60 * 1000); // Check every 6 hours
+  }, 6 * 60 * 60 * 1000);
 }
 
 client.on('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}!`);
   console.log('🤖 Fri 💜 is ready to help Jeraaa!');
+  console.log('📡 Webhook endpoints ready for social media updates!');
   
   scheduleRandomTaskCheckIns();
   scheduleWeeklyReminders();
@@ -354,6 +686,9 @@ client.on('ready', async () => {
     { name: 'email', description: 'Get email campaign ideas' },
     { name: 'website', description: 'Check website updates' },
     { name: 'holidays', description: 'Show upcoming holidays' },
+    { name: 'nextholiday', description: 'Show the next upcoming holiday' },
+    { name: 'nextnewsletter', description: 'Show the next newsletter deadline' },
+    { name: 'allholidays', description: 'Show all holidays in the next 30 days' },
     { name: 'debug', description: 'Check if bot can read messages in this channel' },
     { name: 'newtask', description: 'Create a new task', options: [
       { name: 'task', type: 3, description: 'Task description', required: true },
@@ -375,7 +710,8 @@ client.on('ready', async () => {
         { name: 'Luxury', value: 'luxury' }
       ]}
     ]},
-    { name: 'resources', description: 'Get free design tool links' }
+    { name: 'resources', description: 'Get free design tool links' },
+    { name: 'testwebhook', description: 'Test webhook functionality (admin only)' }
   ];
   
   try {
@@ -393,7 +729,103 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
   
   try {
-    if (interaction.commandName === 'newtask') {
+    if (interaction.commandName === 'nextholiday') {
+      const upcoming = getUpcomingHolidays(1);
+      
+      if (upcoming.length === 0) {
+        await interaction.reply('No upcoming holidays found in the next 30 days! 🎉');
+        return;
+      }
+      
+      const holiday = upcoming[0];
+      const dateStr = holiday.dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      
+      const response = [
+        `${holiday.emoji} **Next Holiday: ${holiday.name}** ${holiday.emoji}\n`,
+        `📅 **Date:** ${dateStr}`,
+        `⏰ **Days Until:** ${holiday.daysUntil} days`,
+        `📂 **Category:** ${holiday.category}`,
+        `💡 **Content Idea:** ${holiday.tip}\n`,
+        `Start planning your content now! 💜✨`
+      ].join('\n');
+      
+      await interaction.reply(response);
+    }
+    
+    else if (interaction.commandName === 'nextnewsletter') {
+      const newsletter = getNextNewsletter();
+      
+      if (!newsletter) {
+        await interaction.reply('No upcoming newsletters found! 📰');
+        return;
+      }
+      
+      const dateStr = newsletter.dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const topicsList = newsletter.topics.map((topic, idx) => `${idx + 1}. ${topic}`).join('\n');
+      
+      const response = [
+        `📰 **Next Newsletter: ${newsletter.theme}** 📰\n`,
+        `📅 **Due Date:** ${dateStr}`,
+        `⏰ **Days Until:** ${newsletter.daysUntil} days\n`,
+        `📋 **Topic Ideas:**`,
+        `${topicsList}\n`,
+        `Start working on it! You've got this! 💜✨`
+      ].join('\n');
+      
+      await interaction.reply(response);
+    }
+    
+    else if (interaction.commandName === 'allholidays') {
+      const upcoming = getUpcomingHolidays(15);
+      
+      if (upcoming.length === 0) {
+        await interaction.reply('No upcoming holidays found in the next 30 days! 🎉');
+        return;
+      }
+      
+      let response = `🎉 **Upcoming Holidays & Awareness Days** (Next 30 Days) 🎉\n\n`;
+      
+      for (const holiday of upcoming) {
+        const dateStr = holiday.dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        response += `${holiday.emoji} **${holiday.name}** - ${dateStr} (${holiday.daysUntil} days)\n`;
+        response += `   💡 ${holiday.tip}\n\n`;
+      }
+      
+      response += `Use /nextholiday to see more details! 💜`;
+      
+      await interaction.reply(response);
+    }
+    
+    else if (interaction.commandName === 'testwebhook') {
+      await interaction.reply({
+        content: '🧪 Testing webhook system...',
+        flags: 64
+      });
+      
+      await handleSocialMediaWebhook({
+        secret: WEBHOOK_SECRET,
+        platform: 'facebook',
+        type: 'new_post',
+        account_name: 'Donna Groomes Realtor',
+        post_text: 'This is a test post! Check out this amazing property! 🏡',
+        post_url: 'https://facebook.com/test-post'
+      });
+      
+      await handleGoogleBusinessWebhook({
+        secret: WEBHOOK_SECRET,
+        type: 'new_review',
+        rating: '5',
+        reviewer_name: 'Test Reviewer',
+        review_text: 'Amazing service! Highly recommend!',
+        review_url: 'https://google.com/test-review'
+      });
+      
+      await interaction.editReply({
+        content: '✅ Test webhooks sent! Check your channels! 💜'
+      });
+    }
+    
+    else if (interaction.commandName === 'newtask') {
       await interaction.reply({
         content: '⏳ Creating your task...',
         flags: 64
@@ -520,7 +952,6 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// Handle reactions to task messages
 client.on('messageReactionAdd', async (reaction, user) => {
   if (user.bot) return;
   
@@ -539,19 +970,15 @@ client.on('messageReactionAdd', async (reaction, user) => {
     
     console.log(`👍 Thumbs up detected on message ID: ${messageId} in channel: ${channelName}`);
     
-    // Check for task group completion
     for (const [groupKey, groupData] of taskGroups.entries()) {
       if (groupData.taskMessageIds.includes(messageId)) {
-        // Add this message to completed set
         groupData.completedIds.add(messageId);
         
         console.log(`✅ Marked task as complete. Progress: ${groupData.completedIds.size}/${groupData.taskMessageIds.length}`);
         
-        // Check if all tasks are completed
         if (groupData.completedIds.size === groupData.taskMessageIds.length) {
           console.log(`🎉 ALL TASKS COMPLETED for: ${groupData.title}`);
           
-          // Find main-chat channel
           const mainChatChannel = reaction.message.guild.channels.cache.find(
             ch => ch.name.includes('main-chat')
           );
@@ -569,7 +996,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
             const emoji = Object.entries(channelEmojis).find(([key]) => channelName.includes(key))?.[1] || '✅';
             
             if (channelName.includes('biweekly-task')) {
-              // Biweekly tasks completion message
               const now = new Date();
               const nextReset = new Date(now);
               nextReset.setDate(now.getDate() + 14);
@@ -581,7 +1007,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 `Excellent work staying organized and on schedule! 📅✨`
               );
             } else {
-              // Real estate task completion message
               await mainChatChannel.send(
                 `🎉 Congratulations, Jeraaa! You've completed all tasks for:\n\n` +
                 `${emoji} **${groupData.title}**\n\n` +
@@ -590,8 +1015,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
             }
             
             console.log('✅ Congratulatory message sent to main-chat!');
-            
-            // Clean up this task group
             taskGroups.delete(groupKey);
           }
         }
@@ -599,7 +1022,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
       }
     }
     
-    // Handle individual task completion (for new-tasks channel)
     if (activeTasks.has(messageId)) {
       const taskData = activeTasks.get(messageId);
       
@@ -654,23 +1076,17 @@ client.on('messageCreate', async (message) => {
     
     if (content.includes('video') || content.includes('clip')) type = 'video';
     if (content.includes('gif') || content.includes('animated')) type = 'gif';
-    if (content.includes('3d') || content.includes('animated')) type = '3d';
-    
-    console.log(`🎬 Detected type: ${type}`);
+    if (content.includes('3d')) type = '3d';
     
     if (content.includes('realistic') || content.includes('photo')) style = 'realistic';
     if (content.includes('cartoon') || content.includes('playful')) style = 'cartoon';
     if (content.includes('minimal')) style = 'minimalist';
     if (content.includes('luxury')) style = 'luxury';
     
-    console.log(`🎨 Detected style: ${style}`);
-    
     const holidayKeywords = {
       'independence': 'Independence Day', 
       'july 4': 'Independence Day',
       'fourth of july': 'Independence Day',
-      'american flag': 'Independence Day',
-      'flag': 'patriotic',
       'christmas': 'Christmas', 
       'xmas': 'Christmas',
       'halloween': 'Halloween',
@@ -691,11 +1107,7 @@ client.on('messageCreate', async (message) => {
       }
     }
     
-    console.log(`🎯 Detected theme: ${theme}`);
-    
     const generatedPrompt = generateAIPrompt(theme, type, style);
-    
-    console.log(`📝 Generated prompt: ${generatedPrompt.substring(0, 100)}...`);
     
     try {
       await message.channel.send(`Hi Jeraaa! 🎨 I heard your vision!\n\n**What you asked for:** ${message.content}`);
@@ -737,7 +1149,6 @@ client.on('messageCreate', async (message) => {
     const personalizedTasks = biweeklyTasks.map(task => task.replace('<@USER_ID>', `<@${message.author.id}>`));
     const sentMessageIds = await sendMessagesWithDelay(message.channel, personalizedTasks);
     
-    // Create a task group for biweekly tasks (skip first and last messages)
     const taskMessageIds = sentMessageIds.slice(1, -1);
     const groupKey = `${message.channel.id}-${Date.now()}`;
     
@@ -753,7 +1164,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Check for real estate trigger words - but only in their respective channels
+  // Check for real estate trigger words in their respective channels
   const channelTriggerMap = {
     'coming-soon': 'coming soon',
     'just-listed': 'just listed',
@@ -762,19 +1173,16 @@ client.on('messageCreate', async (message) => {
     'just-closed': 'just closed'
   };
   
-  // Check if the current channel matches a real estate channel
   for (const [channelKey, trigger] of Object.entries(channelTriggerMap)) {
     if (channelName.includes(channelKey) && content.includes(trigger)) {
       console.log(`🏠 Real estate trigger detected: ${trigger} in correct channel: ${channelName}`);
       
-      // Get the original message as the title
       const taskTitle = message.content;
       
       const tasks = taskLists[trigger];
       const personalizedTasks = tasks.map(task => task.replace('<@USER_ID>', `<@${message.author.id}>`));
       const sentMessageIds = await sendMessagesWithDelay(message.channel, personalizedTasks);
       
-      // Create a task group (skip first greeting and last closing message)
       const taskMessageIds = sentMessageIds.slice(1, -1);
       const groupKey = `${message.channel.id}-${Date.now()}`;
       
