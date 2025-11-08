@@ -81,8 +81,11 @@ const client = new Client({
 });
 
 const activeTasks = new Map();
-let lastWeeklyReminderDate = null;
 const taskGroups = new Map();
+
+let lastWeeklyReminderDate = null;
+let lastHolidayReminderDate = {};
+let lastNewsletterReminderDate = null;
 
 // EXPANDED Holiday & Awareness Days List
 const allHolidays = [
