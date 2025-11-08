@@ -145,6 +145,8 @@ const usHolidays = [
 
 let lastBiweeklyTaskDate = null;
 let lastSocialMediaDate = null;
+let lastHolidayReminderDate = {};
+let lastNewsletterReminderDate = null;
 const WEBSITE_URL = 'https://thegroomesrealtygroup.kw.com/';
 let previousWebsiteState = { blogs: [], listings: [], listingStatuses: {} };
 
@@ -243,12 +245,106 @@ function scheduleWeeklyReminders() {
   }, 60 * 60 * 1000);
 }
 
+// Holiday reminders (5 days before)
+function scheduleHolidayReminders() {
+  setInterval(async () => {
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentDay = String(now.getDate()).padStart(2, '0');
+    const currentDateStr = `${currentMonth}-${currentDay}`;
+    
+    // Check each holiday
+    for (const holiday of usHolidays) {
+      const [holidayMonth, holidayDay] = holiday.date.split('-');
+      const holidayDate = new Date(now.getFullYear(), parseInt(holidayMonth) - 1, parseInt(holidayDay));
+      
+      // Calculate days until holiday
+      const daysUntil = Math.ceil((holidayDate - now) / (1000 * 60 * 60 * 24));
+      
+      // Send reminder 5 days before
+      if (daysUntil === 5) {
+        const lastReminder = lastHolidayReminderDate[holiday.name];
+        if (lastReminder && (now - new Date(lastReminder)) < 24 * 60 * 60 * 1000) {
+          continue; // Already sent today
+        }
+        
+        try {
+          const guild = client.guilds.cache.first();
+          const holidaysChannel = guild.channels.cache.find(ch => ch.name.includes('holidays'));
+          
+          if (holidaysChannel) {
+            await holidaysChannel.send(
+              `Hi Jeraaa! ${holiday.emoji}\n\n` +
+              `**${holiday.name}** is coming up in **5 days**!\n\n` +
+              `💡 **Content Idea:** ${holiday.tip}\n\n` +
+              `Start creating your social media posts now! 🎨✨`
+            );
+            
+            lastHolidayReminderDate[holiday.name] = now.toISOString();
+            console.log(`✅ Sent ${holiday.name} reminder`);
+          }
+        } catch (error) {
+          console.error('Error sending holiday reminder:', error);
+        }
+      }
+    }
+  }, 6 * 60 * 60 * 1000); // Check every 6 hours
+}
+
+// Newsletter reminders (7 days before)
+function scheduleNewsletterReminders() {
+  setInterval(async () => {
+    const now = new Date();
+    
+    // Check each newsletter theme
+    for (const newsletter of newsletterThemes2025) {
+      const newsletterDate = new Date(newsletter.date);
+      
+      // Calculate days until newsletter
+      const daysUntil = Math.ceil((newsletterDate - now) / (1000 * 60 * 60 * 24));
+      
+      // Send reminder 7 days before
+      if (daysUntil === 7) {
+        const lastReminder = lastNewsletterReminderDate;
+        if (lastReminder && (now - new Date(lastReminder)) < 24 * 60 * 60 * 1000) {
+          continue; // Already sent today
+        }
+        
+        try {
+          const guild = client.guilds.cache.first();
+          const newslettersChannel = guild.channels.cache.find(ch => ch.name.includes('newsletters'));
+          
+          if (newslettersChannel) {
+            const topicsList = newsletter.topics.map((topic, idx) => `${idx + 1}. ${topic}`).join('\n');
+            
+            await newslettersChannel.send(
+              `Hi Jeraaa! 📰\n\n` +
+              `Your next **newsletter** is coming up in **7 days**!\n\n` +
+              `🎨 **Theme:** ${newsletter.theme}\n` +
+              `📅 **Due Date:** ${newsletterDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n\n` +
+              `📋 **Topic Ideas:**\n${topicsList}\n\n` +
+              `Start working on it now! You've got this! 💜✨`
+            );
+            
+            lastNewsletterReminderDate = now.toISOString();
+            console.log(`✅ Sent newsletter reminder for ${newsletter.theme}`);
+          }
+        } catch (error) {
+          console.error('Error sending newsletter reminder:', error);
+        }
+      }
+    }
+  }, 6 * 60 * 60 * 1000); // Check every 6 hours
+}
+
 client.on('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}!`);
   console.log('🤖 Fri 💜 is ready to help Jeraaa!');
   
   scheduleRandomTaskCheckIns();
   scheduleWeeklyReminders();
+  scheduleHolidayReminders();
+  scheduleNewsletterReminders();
   
   const commands = [
     { name: 'tasks', description: 'Show your biweekly tasks' },
